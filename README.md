@@ -1,15 +1,37 @@
 # Pathfinder Character Manager
 
-A modern digital character sheet for Pathfinder 1e — built with React, TypeScript, Vite, TailwindCSS, Zustand, Express, Prisma, and SQLite.
+A full-stack Pathfinder 1e character sheet manager with a local reference archive for spells and feats.
+
+**Stack:** React · TypeScript · Vite · TailwindCSS · Zustand · Express · Prisma · MySQL · Docker
+
+---
+
+## Table of contents
+
+1. [Requirements](#requirements)
+2. [Project structure](#project-structure)
+3. [Run with Docker Compose](#run-with-docker-compose)
+4. [Run without Docker (local MySQL)](#run-without-docker-local-mysql)
+5. [Prisma migrations](#prisma-migrations)
+6. [Seed demo character](#seed-demo-character)
+7. [Import reference data](#import-reference-data)
+8. [Verify in Adminer](#verify-in-adminer)
+9. [Test character CRUD](#test-character-crud)
+10. [Test reference spell/feat search](#test-reference-spellsfeat-search)
+11. [All available scripts](#all-available-scripts)
+12. [Full API reference](#full-api-reference)
+13. [Architecture notes](#architecture-notes)
 
 ---
 
 ## Requirements
 
-| Tool    | Minimum version |
-|---------|-----------------|
-| Node.js | 18+             |
-| npm     | 9+              |
+| Tool      | Minimum |
+|-----------|---------|
+| Docker    | 24+     |
+| Docker Compose | v2+ |
+| Node.js   | 20+ *(only if running without Docker)* |
+| npm       | 9+      |
 
 ---
 
@@ -17,107 +39,360 @@ A modern digital character sheet for Pathfinder 1e — built with React, TypeScr
 
 ```
 Pathfinder-app/
-├── frontend/      React + Vite + TypeScript + TailwindCSS + Zustand
-└── backend/       Node.js + Express + Prisma + SQLite
+├── docker-compose.yml
+├── .env.example               ← copy to .env before first run
+├── frontend/                  ← React + Vite + TailwindCSS + Zustand
+│   └── Dockerfile.dev
+└── backend/                   ← Express + Prisma + MySQL
+    ├── Dockerfile.dev
+    ├── prisma/schema.prisma
+    ├── src/
+    │   ├── server.ts
+    │   ├── modules/
+    │   │   ├── characters/    ← CRUD + spell/feat attachment endpoints
+    │   │   └── reference/     ← /api/reference/spells and /feats
+    │   └── common/
+    └── scripts/               ← offline PF1e importers
+        ├── import-spells-pf1e.ts
+        └── import-feats-pf1e.ts
 ```
 
 ---
 
-## First-time setup
+## Run with Docker Compose
 
-### 1 — Backend
+### 1 — Copy and configure environment
 
 ```bash
+cp .env.example .env
+# Edit .env only if you want custom MySQL credentials (defaults work as-is)
+```
+
+### 2 — Build and start all services
+
+```bash
+docker compose up --build
+```
+
+This starts four services:
+
+| Service  | URL                        | Purpose              |
+|----------|----------------------------|----------------------|
+| frontend | http://localhost:5173       | React app            |
+| backend  | http://localhost:3000       | Express API          |
+| db       | localhost:3307              | MySQL 8.0            |
+| adminer  | http://localhost:8080       | DB browser UI        |
+
+Wait until you see:
+```
+backend  | [server] running on http://localhost:3000
+```
+
+### 3 — Apply schema (first time only)
+
+In a **second terminal**:
+
+```bash
+docker compose exec backend npm run db:push
+```
+
+`db:push` (`prisma db push`) syncs the schema directly to the database without needing a shadow DB — no extra privileges required for the `pathfinder` user. This creates all tables: `Character`, `ReferenceSpell`, `CharacterSpell`, `ReferenceFeat`, `CharacterFeat`.
+
+### 4 — Seed demo character
+
+```bash
+docker compose exec backend npm run db:seed
+```
+
+Creates **Valeron** — Human Fighter 3 with full stat block, feats, inventory, and spells pre-filled.
+
+---
+
+## Run without Docker (local MySQL)
+
+Requires a MySQL 8.0 server running on `localhost:3306` with a `pathfinder` database and user.
+
+```bash
+# Backend
 cd backend
 npm install
-npm run db:migrate    # creates dev.db and applies schema
-npm run db:seed       # inserts Valeron (demo character)
-```
+# .env is already set to mysql://pathfinder:pathfinder@localhost:3306/pathfinder
+npx prisma migrate dev --name init
+npm run db:seed
+npm run dev          # → http://localhost:3000
 
-### 2 — Frontend
-
-```bash
+# Frontend (second terminal)
 cd frontend
 npm install
+npm run dev          # → http://localhost:5173
 ```
 
 ---
 
-## Running the app
+## Schema management
 
-Open **two terminals**.
-
-### Terminal 1 — Backend (port 3000)
+### Local Docker dev — use `db:push`
 
 ```bash
-cd backend
-npm run dev
+# First time or after any schema.prisma change:
+docker compose exec backend npm run db:push
 ```
 
-### Terminal 2 — Frontend (port 5173)
+`prisma db push` diffs the schema against the live DB and applies changes directly.
+It does **not** need a shadow database, so the limited `pathfinder` MySQL user works fine.
+
+### When you need a migration history (staging / production)
+
+`prisma migrate dev` requires `CREATE DATABASE` privileges for its shadow DB.
+For those environments grant the user that privilege, or supply a separate `SHADOW_DATABASE_URL`:
 
 ```bash
-cd frontend
-npm run dev
+# With a privileged root user for migration only:
+DATABASE_URL="mysql://root:root@db:3306/pathfinder" \
+  docker compose exec -e DATABASE_URL backend npx prisma migrate dev --name <description>
 ```
 
-Open `http://localhost:5173` in your browser.
+### After a schema.prisma change — rebuild the backend image
+
+```bash
+docker compose build backend
+docker compose up -d backend
+docker compose exec backend npm run db:push
+```
 
 ---
 
-## Available scripts
+## Seed demo character
 
-### Backend
+```bash
+# Via Docker
+docker compose exec backend npm run db:seed
 
-| Script               | Description                                   |
-|----------------------|-----------------------------------------------|
-| `npm run dev`        | Start dev server with hot reload              |
-| `npm run build`      | Compile TypeScript to `dist/`                 |
-| `npm start`          | Run compiled production build                 |
-| `npm run db:migrate` | Apply Prisma migrations (creates SQLite DB)   |
-| `npm run db:generate`| Regenerate Prisma client after schema changes |
-| `npm run db:seed`    | Insert Valeron demo character                 |
-| `npm run db:studio`  | Open Prisma Studio (visual DB browser)        |
-| `npm run type-check` | TypeScript check without emitting             |
+# Locally
+cd backend && npm run db:seed
+```
 
-### Frontend
-
-| Script               | Description                             |
-|----------------------|-----------------------------------------|
-| `npm run dev`        | Start Vite dev server                   |
-| `npm run build`      | Production build to `dist/`             |
-| `npm run preview`    | Preview production build locally        |
-| `npm run type-check` | TypeScript check without emitting       |
+The seed is **idempotent** — re-running it upserts Valeron by a fixed UUID; it never creates duplicates.
 
 ---
 
-## API reference
+## Import reference data
 
-| Method | Path                              | Description           |
-|--------|-----------------------------------|-----------------------|
-| GET    | `/api/characters`                 | List all characters   |
-| GET    | `/api/characters/:id`             | Get full character    |
-| POST   | `/api/characters`                 | Create character      |
-| PUT    | `/api/characters/:id`             | Update character      |
-| DELETE | `/api/characters/:id`             | Delete character      |
-| POST   | `/api/characters/:id/duplicate`   | Duplicate character   |
+Import runs **offline** (you run it once to populate the DB from d20pfsrd.com).
+The app UI reads only from the local DB — no live scraping.
 
-All responses: `{ success: boolean, data: T, error?: string }`
+### Import feats (~1 HTTP request, ~900 feats)
+
+```bash
+# Via Docker
+docker compose exec backend npm run import:feats
+
+# Locally
+cd backend && npm run import:feats
+```
+
+### Import spells (~1 000 HTTP requests at 600 ms each, allow ~15 min)
+
+```bash
+# Dry run first — parses without writing to DB
+docker compose exec backend npm run import:spells -- --dry-run
+
+# Single letter — good for testing
+docker compose exec backend npm run import:spells -- --letter f --limit 10
+
+# Full import
+docker compose exec backend npm run import:spells
+```
+
+Both importers are **idempotent** — re-running upserts by `sourceUrl`.
+
+### Import summary output
+
+```
+─────────────────────────────────────────
+  Pathfinder 1e — Feat Importer
+  Dry run: false
+─────────────────────────────────────────
+Parsed 892 feats from source page.
+[1/892] Power Attack ← Combat
+...
+  Imported : 892   Updated : 0   Skipped : 0   Failed : 0
+```
 
 ---
 
-## Keyboard shortcuts
+## Verify in Adminer
 
-| Shortcut        | Action                |
-|-----------------|-----------------------|
-| Ctrl+S / ⌘S    | Save character        |
-| Escape          | Close modals          |
+1. Open http://localhost:8080
+2. Fill in:
+   - **System:** MySQL
+   - **Server:** `db`
+   - **Username:** `pathfinder`
+   - **Password:** `pathfinder`
+   - **Database:** `pathfinder`
+3. Click **Login**
+
+Useful queries:
+```sql
+SELECT COUNT(*) FROM `Character`;
+SELECT COUNT(*) FROM `ReferenceSpell`;
+SELECT COUNT(*) FROM `ReferenceFeat`;
+SELECT id, JSON_EXTRACT(data, '$.name') AS name FROM `Character`;
+```
+
+---
+
+## Test character CRUD
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# List all characters
+curl http://localhost:3000/api/characters
+
+# Get a specific character (replace ID)
+curl http://localhost:3000/api/characters/00000000-0000-0000-0000-000000000001
+
+# Create a character
+curl -X POST http://localhost:3000/api/characters \
+  -H "Content-Type: application/json" \
+  -d '{"data": {"name": "Test Hero", "race": "Elf", "className": "Wizard", "level": 1}}'
+
+# Duplicate a character
+curl -X POST http://localhost:3000/api/characters/00000000-0000-0000-0000-000000000001/duplicate
+
+# Delete a character (replace ID)
+curl -X DELETE http://localhost:3000/api/characters/<id>
+```
+
+---
+
+## Test reference spells/feat search
+
+```bash
+# Search spells by name
+curl "http://localhost:3000/api/reference/spells?q=fireball"
+
+# Filter by school
+curl "http://localhost:3000/api/reference/spells?school=evocation"
+
+# Filter by class + max level
+curl "http://localhost:3000/api/reference/spells?class=wizard&level=3"
+
+# Combined filters
+curl "http://localhost:3000/api/reference/spells?q=fire&school=evocation&class=sorcerer&level=5"
+
+# Get a specific spell
+curl "http://localhost:3000/api/reference/spells/<id>"
+
+# Search feats
+curl "http://localhost:3000/api/reference/feats?q=power+attack"
+
+# Filter feats by type
+curl "http://localhost:3000/api/reference/feats?type=Combat"
+
+# Attach a reference spell to a character
+curl -X POST http://localhost:3000/api/characters/00000000-0000-0000-0000-000000000001/spells \
+  -H "Content-Type: application/json" \
+  -d '{"referenceSpellId": "<spell-id>", "isPrepared": true}'
+
+# List a character's attached spells
+curl http://localhost:3000/api/characters/00000000-0000-0000-0000-000000000001/spells
+
+# Attach a feat to a character
+curl -X POST http://localhost:3000/api/characters/00000000-0000-0000-0000-000000000001/feats \
+  -H "Content-Type: application/json" \
+  -d '{"referenceFeatId": "<feat-id>"}'
+```
+
+---
+
+## All available scripts
+
+### Backend (`cd backend`)
+
+| Script                 | Description                                            |
+|------------------------|--------------------------------------------------------|
+| `npm run dev`          | Start dev server with hot reload (tsx watch)           |
+| `npm run build`        | Compile TypeScript to `dist/`                          |
+| `npm start`            | Run compiled production build                          |
+| `npm run db:migrate`   | Create + apply new Prisma migration (interactive)      |
+| `npm run db:generate`  | Regenerate Prisma client after schema changes          |
+| `npm run db:studio`    | Open Prisma Studio visual DB browser                   |
+| `npm run db:seed`      | Upsert Valeron demo character                          |
+| `npm run import:feats` | Import PF1e feats from d20pfsrd.com                    |
+| `npm run import:spells`| Import PF1e spells from d20pfsrd.com                   |
+| `npm run type-check`   | TypeScript check without emitting                      |
+
+**Importer flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--dry-run` | Parse and log without writing to DB |
+| `--letter <a-z>` | Spells only: import one alphabet section |
+| `--limit <n>` | Cap total items processed |
+
+### Frontend (`cd frontend`)
+
+| Script               | Description                      |
+|----------------------|----------------------------------|
+| `npm run dev`        | Start Vite dev server            |
+| `npm run build`      | Production build to `dist/`      |
+| `npm run preview`    | Preview production build locally |
+| `npm run type-check` | TypeScript check without emitting|
+
+---
+
+## Full API reference
+
+All responses use the envelope: `{ success: boolean, data: T, error?: string }`
+
+### Characters
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/characters` | List summaries (name, race, class, level) |
+| GET | `/api/characters/:id` | Full character with `data` JSON |
+| POST | `/api/characters` | Create — body: `{ data: CharacterData }` |
+| PUT | `/api/characters/:id` | Update — body: `{ data: Partial<CharacterData> }` (deep-merged) |
+| DELETE | `/api/characters/:id` | Delete |
+| POST | `/api/characters/:id/duplicate` | Clone with `(Copy)` suffix |
+
+### Character spell attachments
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/characters/:id/spells` | List attached spells with full reference data |
+| POST | `/api/characters/:id/spells` | Attach — body: `{ referenceSpellId, isPrepared?, notes? }` |
+| DELETE | `/api/characters/:id/spells/:csId` | Detach |
+
+### Character feat attachments
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/characters/:id/feats` | List attached feats with full reference data |
+| POST | `/api/characters/:id/feats` | Attach — body: `{ referenceFeatId, notes? }` |
+| DELETE | `/api/characters/:id/feats/:cfId` | Detach |
+
+### Reference archive
+
+| Method | Path | Query params | Description |
+|--------|------|------|-------------|
+| GET | `/api/reference/spells` | `q`, `school`, `class`, `level`, `limit`, `offset` | Search spells |
+| GET | `/api/reference/spells/:id` | — | Get spell detail |
+| GET | `/api/reference/feats` | `q`, `type`, `limit`, `offset` | Search feats |
+| GET | `/api/reference/feats/:id` | — | Get feat detail |
 
 ---
 
 ## Architecture notes
 
-- **Formula engine** (`frontend/src/lib/formulas/`) — all derived Pathfinder values are pure functions; `recomputeCharacter()` runs automatically on every state update
-- **Zustand store** — `updateCharacterData(patch)` deep-merges and recomputes; `isDirty` flag drives the Save button
-- **JSON column** — backend stores the entire `CharacterData` blob as JSON in a single SQLite column
+- **Formula engine** (`frontend/src/lib/formulas/`) — all Pathfinder derived values (modifier, AC, saves, skill totals, encumbrance, spell DC) are pure functions; `recomputeCharacter()` runs on every state update
+- **Zustand store** — `updateCharacterData(patch)` deep-merges the patch and triggers recompute; `isDirty` flag drives the Save button
+- **JSON column** — `Character.data` is a MySQL `json` column storing the entire `CharacterData` blob; Prisma handles serialisation automatically
+- **Shared PrismaClient** (`backend/src/common/db/prisma.ts`) — single connection pool instance shared by all repositories
+- **Reference vs character data** — `ReferenceSpell` / `ReferenceFeat` are the read-only archive; `CharacterSpell` / `CharacterFeat` are junction tables that link a character to a reference entry and can hold per-character notes
+- **Offline importers** — `scripts/import-*.ts` are standalone scripts that scrape d20pfsrd.com and upsert into the local DB; the app UI reads only from the local DB, never from an external source
 - **`@/` alias** — maps to `frontend/src/` in both `tsconfig.json` and `vite.config.ts`
+- **Vite proxy** — `/api` is proxied to `BACKEND_URL` (Docker: `http://backend:3000`, local: `http://localhost:3000`)

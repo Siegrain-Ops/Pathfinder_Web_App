@@ -13,7 +13,9 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        // BACKEND_URL lets Docker Compose point at the backend service;
+        // falls back to localhost for plain `npm run dev`.
+        target: process.env.BACKEND_URL ?? 'http://localhost:3000',
         changeOrigin: true,
       },
     },

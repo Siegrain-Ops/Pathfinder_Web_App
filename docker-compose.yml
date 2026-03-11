@@ -1,0 +1,87 @@
+# ── Pathfinder Character Manager — local dev stack ──────────────────────────
+#
+# Services
+#   db       MySQL 8.0      → localhost:3307  (host port; container stays on 3306)
+#   adminer  DB browser     → http://localhost:8080
+#   backend  Express API    → http://localhost:3000
+#   frontend Vite dev       → http://localhost:5173
+#
+# First run
+#   docker compose up --build
+#   docker compose exec backend npm run db:push
+#   docker compose exec backend npm run db:seed     (optional demo character)
+
+services:
+
+  # ── MySQL ────────────────────────────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE:      ${MYSQL_DATABASE:-pathfinder}
+      MYSQL_USER:          ${MYSQL_USER:-pathfinder}
+      MYSQL_PASSWORD:      ${MYSQL_PASSWORD:-pathfinder}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root",
+             "--password=${MYSQL_ROOT_PASSWORD:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── Adminer ──────────────────────────────────────────────────────────────
+  adminer:
+    image: adminer:4
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+  # ── Backend ──────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend:/app
+      # Dedicated volume keeps node_modules out of the bind mount
+      - backend_nm:/app/node_modules
+    environment:
+      DATABASE_URL: mysql://${MYSQL_USER:-pathfinder}:${MYSQL_PASSWORD:-pathfinder}@db:3306/${MYSQL_DATABASE:-pathfinder}
+      PORT:         3000
+      NODE_ENV:     development
+      CORS_ORIGIN:  http://localhost:5173
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ── Frontend ─────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_nm:/app/node_modules
+    environment:
+      # Vite proxy forwards /api to the backend Docker service name
+      BACKEND_URL: http://backend:3000
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
+  backend_nm:
+  frontend_nm:

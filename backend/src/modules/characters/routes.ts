@@ -3,11 +3,15 @@
 // ---------------------------------------------------------------------------
 
 import { Router } from 'express'
-import { characterController } from './controller'
-import { validate }            from '../../common/middleware/validateRequest'
+import { characterController }       from './controller'
+import { characterSpellsController } from './character-spells.controller'
+import { characterFeatsController }  from './character-feats.controller'
+import { validate }                  from '../../common/middleware/validateRequest'
 import { createCharacterSchema, updateCharacterSchema } from './validators'
 
 const router = Router()
+
+// ── Core CRUD ────────────────────────────────────────────────────────────────
 
 // GET    /api/characters
 router.get('/',    characterController.getAll)
@@ -32,5 +36,27 @@ router.delete('/:id', characterController.remove)
 
 // POST   /api/characters/:id/duplicate
 router.post('/:id/duplicate', characterController.duplicate)
+
+// ── Spell attachments ─────────────────────────────────────────────────────────
+
+// GET    /api/characters/:id/spells
+router.get('/:id/spells', characterSpellsController.list)
+
+// POST   /api/characters/:id/spells
+router.post('/:id/spells', characterSpellsController.attach)
+
+// DELETE /api/characters/:id/spells/:csId
+router.delete('/:id/spells/:csId', characterSpellsController.detach)
+
+// ── Feat attachments ──────────────────────────────────────────────────────────
+
+// GET    /api/characters/:id/feats
+router.get('/:id/feats', characterFeatsController.list)
+
+// POST   /api/characters/:id/feats
+router.post('/:id/feats', characterFeatsController.attach)
+
+// DELETE /api/characters/:id/feats/:cfId
+router.delete('/:id/feats/:cfId', characterFeatsController.detach)
 
 export { router as characterRoutes }

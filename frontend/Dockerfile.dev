@@ -1,0 +1,13 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies first (layer-cached until package.json changes)
+COPY package*.json ./
+
+RUN npm ci
+
+EXPOSE 5173
+
+# --host binds Vite to 0.0.0.0 so the container port is reachable from the host
+CMD ["npx", "vite", "--host"]

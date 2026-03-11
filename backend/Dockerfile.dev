@@ -1,0 +1,24 @@
+FROM node:20-bookworm-slim
+
+# Prisma query engine requires OpenSSL at runtime.
+# bookworm-slim ships without it, so install it explicitly.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends openssl \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install dependencies first (layer-cached until package.json changes)
+COPY package*.json ./
+
+# Copy Prisma schema so `prisma generate` works at build time.
+# The generated client ends up in node_modules/@prisma/client which is stored
+# in the dedicated `backend_nm` named volume — not overwritten by the bind mount.
+COPY prisma ./prisma
+
+RUN npm ci && npx prisma generate
+
+EXPOSE 3000
+
+# tsx watch picks up source changes from the bind-mounted /app
+CMD ["npm", "run", "dev"]

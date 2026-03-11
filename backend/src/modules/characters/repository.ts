@@ -1,26 +1,21 @@
 // ---------------------------------------------------------------------------
 // Character Repository — Prisma data access
-// Prisma schema is defined in STEP 7. The repository depends on the
-// generated PrismaClient and the `Character` model.
+// With MySQL + Prisma's Json column type, serialisation is handled by Prisma.
+// No manual JSON.parse / JSON.stringify needed.
 // ---------------------------------------------------------------------------
 
-import { PrismaClient } from '@prisma/client'
+import { type Prisma } from '@prisma/client'
+import { prisma } from '../../common/db/prisma'
 import type { CharacterData } from './types'
-
-const prisma = new PrismaClient()
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Parse the JSON `data` field from SQLite (stored as string). */
-function parseData(raw: string): CharacterData {
-  return JSON.parse(raw) as CharacterData
-}
-
-/** Map a raw Prisma row to a typed record. */
-function toRecord(row: { id: string; data: string; createdAt: Date; updatedAt: Date }) {
+/** Map a raw Prisma row to a typed record.
+ *  Prisma returns `data` as `Prisma.JsonValue`; we cast to `CharacterData`. */
+function toRecord(row: { id: string; data: Prisma.JsonValue; createdAt: Date; updatedAt: Date }) {
   return {
     id:        row.id,
-    data:      parseData(row.data),
+    data:      row.data as unknown as CharacterData,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -46,7 +41,7 @@ export const characterRepository = {
     const row = await prisma.character.create({
       data: {
         id,
-        data: JSON.stringify(data),
+        data: data as unknown as Prisma.InputJsonValue,
       },
     })
     return toRecord(row)
@@ -55,7 +50,7 @@ export const characterRepository = {
   async update(id: string, data: CharacterData) {
     const row = await prisma.character.update({
       where: { id },
-      data:  { data: JSON.stringify(data) },
+      data:  { data: data as unknown as Prisma.InputJsonValue },
     })
     return toRecord(row)
   },

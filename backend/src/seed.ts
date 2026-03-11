@@ -416,23 +416,22 @@ Goals:
 
 // ── Seed runner ─────────────────────────────────────────────────────────────
 
+// Fixed stable ID so re-running the seed upserts instead of creating duplicates.
+const VALERON_ID = '00000000-0000-0000-0000-000000000001'
+
 async function seed() {
   console.log('Seeding database…')
 
-  // Wipe existing demo character if it exists
-  await prisma.character.deleteMany({
-    where: { data: { contains: '"name":"Valeron"' } },
+  // Upsert: create if absent, overwrite if already present.
+  // Using a fixed ID avoids the need for JSON-column contains filtering,
+  // which behaves differently between SQLite and MySQL.
+  await prisma.character.upsert({
+    where:  { id: VALERON_ID },
+    create: { id: VALERON_ID, data: valeron as never },
+    update: { data: valeron as never },
   })
 
-  const id = randomUUID()
-  await prisma.character.create({
-    data: {
-      id,
-      data: JSON.stringify(valeron),
-    },
-  })
-
-  console.log(`✔ Created Valeron (id: ${id})`)
+  console.log(`✔ Upserted Valeron (id: ${VALERON_ID})`)
   console.log('Seed complete.')
 }
 

@@ -1,16 +1,234 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
+// ── Character ────────────────────────────────────────────────────────────────
+// Full character sheet stored as a MySQL JSON column.
+// The id is a UUID generated in the service layer (no @default here).
+
 model Character {
-  id        String   @id
-  /// Full character sheet stored as a JSON string
-  data      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String           @id
+  data            Json
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  characterSpells CharacterSpell[]
+  characterFeats  CharacterFeat[]
+}
+
+// ── Reference Spell ──────────────────────────────────────────────────────────
+// Pathfinder 1e spell reference data — populated by the offline importer.
+
+model ReferenceSpell {
+  id              String   @id @default(uuid())
+  name            String
+  school          String?
+  subschool       String?
+  descriptor      String?
+  /// {"wizard": 1, "sorcerer": 1, "cleric": 3, ...}
+  spellLevelJson  Json
+  castingTime     String?
+  components      String?
+  rangeText       String?
+  targetText      String?
+  areaText        String?
+  effectText      String?
+  durationText    String?
+  savingThrow     String?
+  spellResistance String?
+  description     String   @db.LongText
+  sourceName      String?
+  sourceUrl       String?  @unique
+  edition         String   @default("PF1e")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  characterSpells CharacterSpell[]
+
+  @@index([name])
+  @@index([school])
+}
+
+// ── Character Spell (junction) ───────────────────────────────────────────────
+// Links a character to a spell from the reference archive.
+
+model CharacterSpell {
+  id               String         @id @default(uuid())
+  characterId      String
+  referenceSpellId String
+  isPrepared       Boolean        @default(false)
+  notes            String?
+
+  createdAt        DateTime       @default(now())
+
+  character      Character      @relation(fields: [characterId],      references: [id], onDelete: Cascade)
+  referenceSpell ReferenceSpell @relation(fields: [referenceSpellId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, referenceSpellId])
+  @@index([characterId])
+}
+
+// ── Reference Feat ───────────────────────────────────────────────────────────
+// Pathfinder 1e feat reference data — populated by the offline importer.
+
+model ReferenceFeat {
+  id            String   @id @default(uuid())
+  name          String
+  featType      String?
+  prerequisites String?  @db.Text
+  benefit       String?  @db.Text
+  normalText    String?  @db.Text
+  specialText   String?  @db.Text
+  description   String?  @db.LongText
+  sourceName    String?
+  sourceUrl     String?  @unique
+  edition       String   @default("PF1e")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  characterFeats CharacterFeat[]
+
+  @@index([name])
+  @@index([featType])
+}
+
+// ── Character Feat (junction) ────────────────────────────────────────────────
+// Links a character to a feat from the reference archive.
+
+model CharacterFeat {
+  id              String        @id @default(uuid())
+  characterId     String
+  referenceFeatId String
+  notes           String?
+
+  createdAt       DateTime      @default(now())
+
+  character     Character     @relation(fields: [characterId],     references: [id], onDelete: Cascade)
+  referenceFeat ReferenceFeat @relation(fields: [referenceFeatId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, referenceFeatId])
+  @@index([characterId])
+}
+
+// ── Reference Class ───────────────────────────────────────────────────────────
+// Core, base, hybrid, prestige, and NPC classes.
+
+model ReferenceClass {
+  id              String   @id @default(uuid())
+  name            String
+  description     String?  @db.LongText
+  hitDie          Int?                  /// d6 / d8 / d10 / d12
+  skillRanks      Int?                  /// skill points per level (before Int mod)
+  babProgression  String?               /// "full" | "3/4" | "1/2"
+  goodSaves       String?               /// comma-separated e.g. "fort,will"
+  classFeatures   Json?                 /// [{level, name, description}]
+  sourceName      String?
+  sourceUrl       String?  @unique
+  edition         String   @default("PF1e")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  archetypes      ReferenceArchetype[]
+
+  @@index([name])
+}
+
+// ── Reference Archetype ───────────────────────────────────────────────────────
+// Class variants that replace or modify base class features.
+
+model ReferenceArchetype {
+  id                String          @id @default(uuid())
+  name              String
+  className         String?                               /// denormalized parent class name
+  classId           String?
+  description       String?         @db.LongText
+  replacedFeatures  Json?           /// [{level, name}]
+  gainedFeatures    Json?           /// [{level, name, description}]
+  sourceName        String?
+  sourceUrl         String?         @unique
+  edition           String          @default("PF1e")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  class             ReferenceClass? @relation(fields: [classId], references: [id], onDelete: SetNull)
+
+  @@index([name])
+  @@index([className])
+}
+
+// ── Reference Trait ───────────────────────────────────────────────────────────
+// Character traits (combat, magic, social, race, religion, regional, equipment).
+
+model ReferenceTrait {
+  id            String   @id @default(uuid())
+  name          String
+  traitType     String?             /// "combat" | "magic" | "social" | "race" | "religion" | "regional" | "equipment"
+  prerequisites String?  @db.Text
+  description   String?  @db.LongText
+  sourceName    String?
+  sourceUrl     String?  @unique
+  edition       String   @default("PF1e")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([name])
+  @@index([traitType])
+}
+
+// ── Reference Equipment ───────────────────────────────────────────────────────
+// Weapons, armor, shields, and adventuring gear.
+
+model ReferenceEquipment {
+  id          String   @id @default(uuid())
+  name        String
+  category    String?             /// "weapon" | "armor" | "shield" | "gear" | "mount" | "trade good" | ...
+  subCategory String?             /// "simple" | "martial" | "exotic" | "light armor" | ...
+  cost        String?             /// "15 gp"
+  weight      String?             /// "4 lbs" | "—"
+  description String?  @db.LongText
+  properties  Json?               /// category-specific: {dmg, crit, range, acBonus, armorCheck, ...}
+  sourceName  String?
+  sourceUrl   String?  @unique
+  edition     String   @default("PF1e")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+  @@index([category])
+}
+
+// ── Reference Monster ─────────────────────────────────────────────────────────
+// Bestiary entries with stat block data.
+
+model ReferenceMonster {
+  id             String   @id @default(uuid())
+  name           String
+  cr             String?             /// "1/2" | "1" | "5" | "20"
+  xp             Int?
+  monsterType    String?             /// "humanoid" | "undead" | "dragon" | ...
+  subtype        String?             /// "goblinoid" | "elf" | ...
+  size           String?             /// "Fine" … "Colossal"
+  alignment      String?
+  hp             Int?
+  hd             String?             /// "2d8+4"
+  ac             Int?
+  initiative     Int?
+  speed          String?             /// "30 ft., fly 60 ft. (average)"
+  description    String?  @db.LongText
+  statBlock      Json?               /// full parsed stat block object
+  sourceName     String?
+  sourceUrl      String?  @unique
+  edition        String   @default("PF1e")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([name])
+  @@index([cr])
+  @@index([monsterType])
 }
