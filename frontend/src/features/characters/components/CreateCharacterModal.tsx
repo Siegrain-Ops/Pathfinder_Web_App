@@ -13,6 +13,7 @@ import { recomputeCharacter }  from '@/lib/formulas/character.formulas'
 import { createBlankCharacter } from '@/lib/utils/character.utils'
 import type { Alignment, SizeCategory } from '@/types'
 import { useReferenceRaces } from '../hooks/useReferenceRaces'
+import { useReferenceClasses } from '../hooks/useReferenceClasses'
 
 interface CreateCharacterModalProps {
   open:    boolean
@@ -22,7 +23,9 @@ interface CreateCharacterModalProps {
 export function CreateCharacterModal({ open, onClose }: CreateCharacterModalProps) {
   const navigate = useNavigate()
   const { races, isLoading: racesLoading } = useReferenceRaces()
+  const { classes, isLoading: classesLoading } = useReferenceClasses()
   const raceOptions = races.length > 0 ? races.map(race => race.name) : COMMON_RACES
+  const classOptions = classes.length > 0 ? classes.map(classRecord => classRecord.name) : COMMON_CLASSES
 
   const {
     register,
@@ -90,10 +93,13 @@ export function CreateCharacterModal({ open, onClose }: CreateCharacterModalProp
             </select>
           </Field>
           <Field label="Class *" error={errors.className?.message}>
-            <input {...register('className')} list="classes-list" placeholder="Fighter" />
-            <datalist id="classes-list">
-              {COMMON_CLASSES.map(c => <option key={c} value={c} />)}
-            </datalist>
+            <select
+              className="field"
+              {...register('className')}
+              disabled={classesLoading}
+            >
+              {classOptions.map(className => <option key={className} value={className}>{className}</option>)}
+            </select>
           </Field>
           <Field label="Level" error={errors.level?.message}>
             <input {...register('level', { valueAsNumber: true })} type="number" min={1} max={20} />

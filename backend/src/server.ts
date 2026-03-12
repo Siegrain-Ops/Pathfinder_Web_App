@@ -6,6 +6,7 @@ import { characterRoutes }    from './modules/characters/routes'
 import { referenceSpellRoutes } from './modules/reference/spells/routes'
 import { referenceFeatRoutes }  from './modules/reference/feats/routes'
 import { referenceRaceRoutes }  from './modules/reference/races/routes'
+import { referenceClassRoutes } from './modules/reference/classes/routes'
 import { errorHandler }         from './common/middleware/errorHandler'
 
 dotenv.config()
@@ -30,6 +31,7 @@ app.use('/api/characters',      characterRoutes)
 app.use('/api/reference/spells', referenceSpellRoutes)
 app.use('/api/reference/feats',  referenceFeatRoutes)
 app.use('/api/reference/races',  referenceRaceRoutes)
+app.use('/api/reference/classes', referenceClassRoutes)
 
 // ── 404 for unknown routes ─────────────────────────────────────────────────
 app.use((_req, res) => {

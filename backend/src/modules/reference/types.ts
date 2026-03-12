@@ -4,6 +4,7 @@
 
 import type { ReferenceSpell as PrismaSpell, ReferenceFeat as PrismaFeat } from '@prisma/client'
 import type { ReferenceRace as PrismaRace } from '@prisma/client'
+import type { ReferenceClass as PrismaClass } from '@prisma/client'
 
 // ── Reference Spell ─────────────────────────────────────────────────────────
 
@@ -26,8 +27,16 @@ export interface SpellSearchParams {
 export type ReferenceFeat = PrismaFeat
 
 export type ReferenceRace = PrismaRace
+export type ReferenceClass = PrismaClass
 
 export interface RaceSearchParams {
+  q?: string
+  category?: string
+  limit?: number
+  offset?: number
+}
+
+export interface ClassSearchParams {
   q?: string
   category?: string
   limit?: number

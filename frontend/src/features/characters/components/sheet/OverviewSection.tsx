@@ -1,16 +1,19 @@
 import { SectionPanel }      from './SectionPanel'
 import { useCharacterSheet } from '../../hooks/useCharacterSheet'
+import { useReferenceClasses } from '../../hooks/useReferenceClasses'
 import { useReferenceRaces } from '../../hooks/useReferenceRaces'
 import { ALIGNMENTS, COMMON_CLASSES, COMMON_RACES, SIZE_CATEGORIES } from '@/lib/constants'
 
 export function OverviewSection() {
   const { data, update, setReferenceRaceId } = useCharacterSheet()
+  const { classes, isLoading: classesLoading } = useReferenceClasses()
   const { races, isLoading: racesLoading } = useReferenceRaces()
   if (!data) return null
 
   // Capture narrowed non-null reference so closures can access it safely
   const d = data
   const raceOptions = races.length > 0 ? races.map(race => race.name) : COMMON_RACES
+  const classOptions = classes.length > 0 ? classes.map(classRecord => classRecord.name) : COMMON_CLASSES
 
   function field(key: keyof typeof d) {
     return {
@@ -48,10 +51,17 @@ export function OverviewSection() {
           </select>
         </FormField>
         <FormField label="Class">
-          <input className="field" list="class-list" {...field('className')} />
-          <datalist id="class-list">
-            {COMMON_CLASSES.map(c => <option key={c} value={c} />)}
-          </datalist>
+          <select
+            className="field"
+            value={data.className}
+            onChange={e => update({ className: e.target.value })}
+            disabled={classesLoading}
+          >
+            {!classOptions.includes(data.className) && (
+              <option value={data.className}>{data.className}</option>
+            )}
+            {classOptions.map(className => <option key={className} value={className}>{className}</option>)}
+          </select>
         </FormField>
         <FormField label="Level">
           <input

@@ -39,3 +39,36 @@ export interface ReferenceRace {
   createdAt: string
   updatedAt: string
 }
+
+export interface ReferenceClass {
+  id: string
+  name: string
+  category: string | null
+  role: string | null
+  alignmentText: string | null
+  description: string | null
+  hitDie: number | null
+  skillRanks: number | null
+  classSkills: Array<{ name: string; stat?: string }> | null
+  weaponArmorProficiency: string | null
+  startingWealth: string | null
+  babProgression: string | null
+  goodSaves: string | null
+  spellcastingType: string | null
+  castingStat: string | null
+  progressionTable: Array<{
+    level: number
+    baseAttackBonus: number | null
+    fortSave: number | null
+    refSave: number | null
+    willSave: number | null
+    special: string[]
+    spellsPerDay?: string[]
+  }> | null
+  classFeatures: Array<{ level?: number; name: string; description: string }> | null
+  sourceName: string | null
+  sourceUrl: string | null
+  edition: string
+  createdAt: string
+  updatedAt: string
+}
