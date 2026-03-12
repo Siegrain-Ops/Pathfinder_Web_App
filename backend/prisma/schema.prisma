@@ -152,11 +152,20 @@ model ReferenceRace {
 model ReferenceClass {
   id              String   @id @default(uuid())
   name            String
+  category        String?               /// "core", "base", "hybrid", "npc", "prestige", ...
+  role            String?  @db.Text
+  alignmentText   String?  @db.Text
   description     String?  @db.LongText
   hitDie          Int?                  /// d6 / d8 / d10 / d12
   skillRanks      Int?                  /// skill points per level (before Int mod)
+  classSkills     Json?                 /// [{ name, stat? }]
+  weaponArmorProficiency String? @db.LongText
+  startingWealth  String?  @db.Text
   babProgression  String?               /// "full" | "3/4" | "1/2"
   goodSaves       String?               /// comma-separated e.g. "fort,will"
+  spellcastingType String?              /// "prepared" | "spontaneous" | "none" | custom
+  castingStat     String?               /// "intelligence", "wisdom", "charisma", ...
+  progressionTable Json?                /// [{ level, baseAttackBonus, fortSave, refSave, willSave, special, spellsPerDay? }]
   classFeatures   Json?                 /// [{level, name, description}]
   sourceName      String?
   sourceUrl       String?  @unique
@@ -167,6 +176,7 @@ model ReferenceClass {
   archetypes      ReferenceArchetype[]
 
   @@index([name])
+  @@index([category])
 }
 
 // ── Reference Archetype ───────────────────────────────────────────────────────
