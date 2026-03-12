@@ -292,6 +292,14 @@ export function SpellsSection() {
                       <input className="field" value={spell.castingTime}
                         onChange={e => updateSpell(spell.id, { castingTime: e.target.value })} />
                     </SpellField>
+                    <SpellField label="Components">
+                      <input
+                        className="field"
+                        value={formatComponents(spell.components)}
+                        onChange={e => updateSpell(spell.id, { components: parseComponents(e.target.value) })}
+                        placeholder="V, S, M"
+                      />
+                    </SpellField>
                     <SpellField label="Range">
                       <input className="field" value={spell.range}
                         onChange={e => updateSpell(spell.id, { range: e.target.value })} />
@@ -406,6 +414,10 @@ function parseComponents(value: string | null): Spell['components'] {
     .filter((token): token is Spell['components'][number] => allowed.has(token as Spell['components'][number]))
 
   return components.length > 0 ? components : ['V', 'S']
+}
+
+function formatComponents(components: Spell['components']): string {
+  return components.join(', ')
 }
 
 function isSpellResistanceEnabled(value: string | null): boolean {
