@@ -22,6 +22,8 @@ export interface Feat {
   normal: string
   special: string
   notes: string
+  /** When true, all editable fields are read-only. Defaults to true for new feats. */
+  locked?: boolean
 }
 
 export type AbilityType =
@@ -40,6 +42,8 @@ export interface SpecialAbility {
   usesPerDay: number | null
   usesRemaining: number | null
   description: string
+  /** When true, all editable fields are read-only. Defaults to true for new abilities. */
+  locked?: boolean
 }
 
 export const defaultFeat = (id: string): Feat => ({
@@ -51,6 +55,7 @@ export const defaultFeat = (id: string): Feat => ({
   normal: '',
   special: '',
   notes: '',
+  locked: true,
 })
 
 export const defaultAbility = (id: string): SpecialAbility => ({
@@ -60,4 +65,5 @@ export const defaultAbility = (id: string): SpecialAbility => ({
   usesPerDay: null,
   usesRemaining: null,
   description: '',
+  locked: true,
 })

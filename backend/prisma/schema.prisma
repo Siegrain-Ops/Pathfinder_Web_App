@@ -8,10 +8,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ── Character ────────────────────────────────────────────────────────────────
+// Character
 // Full character sheet stored as a MySQL JSON column.
-// The id is a UUID generated in the service layer (no @default here).
-
+// The id is a UUID generated in the service layer.
 model Character {
   id              String           @id
   data            Json
@@ -26,9 +25,8 @@ model Character {
   @@index([referenceRaceId])
 }
 
-// ── Reference Spell ──────────────────────────────────────────────────────────
-// Pathfinder 1e spell reference data — populated by the offline importer.
-
+// ReferenceSpell
+// Pathfinder 1e spell reference data populated by the offline importer.
 model ReferenceSpell {
   id              String   @id @default(uuid())
   name            String
@@ -54,47 +52,45 @@ model ReferenceSpell {
   updatedAt       DateTime @updatedAt
 
   characterSpells CharacterSpell[]
+  abilities       ReferenceAbility[]
 
   @@index([name])
   @@index([school])
 }
 
-// ── Character Spell (junction) ───────────────────────────────────────────────
+// CharacterSpell
 // Links a character to a spell from the reference archive.
-
 model CharacterSpell {
   id               String         @id @default(uuid())
   characterId      String
   referenceSpellId String
   isPrepared       Boolean        @default(false)
   notes            String?
-
   createdAt        DateTime       @default(now())
 
-  character      Character      @relation(fields: [characterId],      references: [id], onDelete: Cascade)
+  character      Character      @relation(fields: [characterId], references: [id], onDelete: Cascade)
   referenceSpell ReferenceSpell @relation(fields: [referenceSpellId], references: [id], onDelete: Cascade)
 
   @@unique([characterId, referenceSpellId])
   @@index([characterId])
 }
 
-// ── Reference Feat ───────────────────────────────────────────────────────────
-// Pathfinder 1e feat reference data — populated by the offline importer.
-
+// ReferenceFeat
+// Pathfinder 1e feat reference data populated by the offline importer.
 model ReferenceFeat {
-  id            String   @id @default(uuid())
-  name          String
-  featType      String?
-  prerequisites String?  @db.Text
-  benefit       String?  @db.Text
-  normalText    String?  @db.Text
-  specialText   String?  @db.Text
-  description   String?  @db.LongText
-  sourceName    String?
-  sourceUrl     String?  @unique
-  edition       String   @default("PF1e")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(uuid())
+  name           String
+  featType       String?
+  prerequisites  String?  @db.Text
+  benefit        String?  @db.Text
+  normalText     String?  @db.Text
+  specialText    String?  @db.Text
+  description    String?  @db.LongText
+  sourceName     String?
+  sourceUrl      String?  @unique
+  edition        String   @default("PF1e")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   characterFeats CharacterFeat[]
 
@@ -102,30 +98,24 @@ model ReferenceFeat {
   @@index([featType])
 }
 
-// ── Character Feat (junction) ────────────────────────────────────────────────
+// CharacterFeat
 // Links a character to a feat from the reference archive.
-
 model CharacterFeat {
   id              String        @id @default(uuid())
   characterId     String
   referenceFeatId String
   notes           String?
-
   createdAt       DateTime      @default(now())
 
-  character     Character     @relation(fields: [characterId],     references: [id], onDelete: Cascade)
+  character     Character     @relation(fields: [characterId], references: [id], onDelete: Cascade)
   referenceFeat ReferenceFeat @relation(fields: [referenceFeatId], references: [id], onDelete: Cascade)
 
   @@unique([characterId, referenceFeatId])
   @@index([characterId])
 }
 
-// ── Reference Class ───────────────────────────────────────────────────────────
-// Core, base, hybrid, prestige, and NPC classes.
-
-// ── Reference Race ───────────────────────────────────────────────────────────
-// Pathfinder 1e race reference data — intended for parser/importer population.
-
+// ReferenceRace
+// Pathfinder 1e race reference data intended for parser/importer population.
 model ReferenceRace {
   id               String    @id @default(uuid())
   name             String
@@ -149,62 +139,222 @@ model ReferenceRace {
   @@index([category])
 }
 
+// ReferenceClass
+// Core, base, hybrid, prestige, and NPC classes.
 model ReferenceClass {
+  id                    String   @id @default(uuid())
+  name                  String
+  category              String?               /// "core", "base", "hybrid", "npc", "prestige", ...
+  role                  String?  @db.Text
+  alignmentText         String?  @db.Text
+  description           String?  @db.LongText
+  hitDie                Int?                  /// d6 / d8 / d10 / d12
+  skillRanks            Int?                  /// skill points per level (before Int mod)
+  classSkills           Json?                 /// [{ name, stat? }]
+  weaponArmorProficiency String? @db.LongText
+  startingWealth        String?  @db.Text
+  babProgression        String?               /// "full" | "3/4" | "1/2"
+  goodSaves             String?               /// comma-separated e.g. "fort,will"
+  spellcastingType      String?               /// "prepared" | "spontaneous" | "none" | custom
+  castingStat           String?               /// "intelligence", "wisdom", "charisma", ...
+  progressionTable      Json?                /// [{ level, baseAttackBonus, fortSave, refSave, willSave, special, spellsPerDay? }]
+  classFeatures         Json?                 /// [{ level, name, description }]
+  sourceName            String?
+  sourceUrl             String?  @unique
+  edition               String   @default("PF1e")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  archetypes            ReferenceArchetype[]
+
+  @@index([name])
+  @@index([category])
+}
+
+// ReferenceArchetype
+// Class variants that replace or modify base class features.
+model ReferenceArchetype {
+  id               String          @id @default(uuid())
+  name             String
+  className        String?                               /// denormalized parent class name
+  classId          String?
+  description      String?         @db.LongText
+  replacedFeatures Json?           /// [{ level, name }]
+  gainedFeatures   Json?           /// [{ level, name, description }]
+  sourceName       String?
+  sourceUrl        String?         @unique
+  edition          String          @default("PF1e")
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  class            ReferenceClass? @relation(fields: [classId], references: [id], onDelete: SetNull)
+
+  @@index([name])
+  @@index([className])
+}
+
+// ReferenceAbility
+// Projected abilities from races, classes, archetypes, bloodlines, domains,
+// mysteries, revelations, discoveries, and talent families.
+model ReferenceAbility {
+  id               String   @id @default(uuid())
+  name             String
+  abilityType      String?             /// "spell-like" | "supernatural" | "extraordinary" | "class-feature" | ...
+  sourceCategory   String?             /// "race" | "class" | "archetype" | "bloodline" | "domain" | ...
+  sourceParentName String?             /// e.g. "Paladin", "Tiefling", "Sorcerer"
+  sourceOptionName String?             /// e.g. "Abyssal Bloodline", "Fire Domain"
+  levelRequirement Int?
+  frequencyText    String?  @db.Text
+  usesPerDay       Int?
+  casterLevelText  String?  @db.Text
+  dcText           String?  @db.Text
+  description      String?  @db.LongText
+  referenceSpellId String?
+  sourceName       String?
+  sourceUrl        String?  @unique
+  edition          String   @default("PF1e")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  referenceSpell   ReferenceSpell? @relation(fields: [referenceSpellId], references: [id], onDelete: SetNull)
+
+  @@index([name])
+  @@index([abilityType])
+  @@index([sourceCategory])
+  @@index([sourceParentName])
+  @@index([sourceOptionName])
+  @@index([referenceSpellId])
+}
+
+// ReferenceBloodline
+// Sorcerer and bloodrager bloodlines and their structured metadata.
+model ReferenceBloodline {
+  id          String   @id @default(uuid())
+  name        String
+  className   String?             /// "sorcerer", "bloodrager", ...
+  description String?  @db.LongText
+  arcanaText  String?  @db.LongText
+  powers      Json?               /// [{ level?, name, abilityType?, description }]
+  bonusSpells Json?               /// [{ level, spellName }]
+  bonusFeats  Json?               /// ["Power Attack", ...]
+  sourceName  String?
+  sourceUrl   String?  @unique
+  edition     String   @default("PF1e")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+  @@index([className])
+}
+
+// ReferenceDomain
+// Cleric, inquisitor, and related domains.
+model ReferenceDomain {
+  id               String   @id @default(uuid())
+  name             String
+  parentDomainName String?             /// for subdomains or grouped variants
+  className        String?             /// "cleric", "inquisitor", ...
+  description      String?  @db.LongText
+  grantedPowers    Json?               /// [{ level?, name, abilityType?, description }]
+  domainSpells     Json?               /// [{ level, spellName }]
+  sourceName       String?
+  sourceUrl        String?  @unique
+  edition          String   @default("PF1e")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([name])
+  @@index([parentDomainName])
+  @@index([className])
+}
+
+// ReferenceMystery
+// Oracle mysteries, their bonus spells, and their revelation lists.
+model ReferenceMystery {
   id              String   @id @default(uuid())
   name            String
-  category        String?               /// "core", "base", "hybrid", "npc", "prestige", ...
-  role            String?  @db.Text
-  alignmentText   String?  @db.Text
+  className       String?             /// usually "oracle"
   description     String?  @db.LongText
-  hitDie          Int?                  /// d6 / d8 / d10 / d12
-  skillRanks      Int?                  /// skill points per level (before Int mod)
-  classSkills     Json?                 /// [{ name, stat? }]
-  weaponArmorProficiency String? @db.LongText
-  startingWealth  String?  @db.Text
-  babProgression  String?               /// "full" | "3/4" | "1/2"
-  goodSaves       String?               /// comma-separated e.g. "fort,will"
-  spellcastingType String?              /// "prepared" | "spontaneous" | "none" | custom
-  castingStat     String?               /// "intelligence", "wisdom", "charisma", ...
-  progressionTable Json?                /// [{ level, baseAttackBonus, fortSave, refSave, willSave, special, spellsPerDay? }]
-  classFeatures   Json?                 /// [{level, name, description}]
+  classSkills     Json?               /// [{ name, stat? }]
+  bonusSpells     Json?               /// [{ level, spellName }]
+  revelations     Json?               /// [{ name, levelRequirement?, description? }]
+  finalRevelation String?  @db.LongText
   sourceName      String?
   sourceUrl       String?  @unique
   edition         String   @default("PF1e")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  archetypes      ReferenceArchetype[]
-
-  @@index([name])
-  @@index([category])
-}
-
-// ── Reference Archetype ───────────────────────────────────────────────────────
-// Class variants that replace or modify base class features.
-
-model ReferenceArchetype {
-  id                String          @id @default(uuid())
-  name              String
-  className         String?                               /// denormalized parent class name
-  classId           String?
-  description       String?         @db.LongText
-  replacedFeatures  Json?           /// [{level, name}]
-  gainedFeatures    Json?           /// [{level, name, description}]
-  sourceName        String?
-  sourceUrl         String?         @unique
-  edition           String          @default("PF1e")
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-
-  class             ReferenceClass? @relation(fields: [classId], references: [id], onDelete: SetNull)
-
   @@index([name])
   @@index([className])
 }
 
-// ── Reference Trait ───────────────────────────────────────────────────────────
-// Character traits (combat, magic, social, race, religion, regional, equipment).
+// ReferenceRevelation
+// Individually addressable revelations normalized from their parent mystery.
+model ReferenceRevelation {
+  id               String   @id @default(uuid())
+  name             String
+  mysteryName      String?
+  className        String?             /// usually "oracle"
+  levelRequirement Int?
+  abilityType      String?             /// "spell-like" | "supernatural" | ...
+  description      String?  @db.LongText
+  sourceName       String?
+  sourceUrl        String?  @unique
+  edition          String   @default("PF1e")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
+  @@index([name])
+  @@index([mysteryName])
+  @@index([className])
+  @@index([abilityType])
+}
+
+// ReferenceDiscovery
+// Alchemist discoveries and similar pick-one ability families.
+model ReferenceDiscovery {
+  id            String   @id @default(uuid())
+  name          String
+  className     String?             /// usually "alchemist"
+  prerequisites String?  @db.Text
+  abilityType   String?             /// "spell-like" | "supernatural" | "extraordinary" | ...
+  description   String?  @db.LongText
+  sourceName    String?
+  sourceUrl     String?  @unique
+  edition       String   @default("PF1e")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([name])
+  @@index([className])
+  @@index([abilityType])
+}
+
+// ReferenceTalent
+// Rogue talents, ninja tricks, slayer talents, exploits, and related families.
+model ReferenceTalent {
+  id            String   @id @default(uuid())
+  name          String
+  talentFamily  String?             /// "rogue talent", "advanced rogue talent", "slayer talent", ...
+  className     String?             /// "rogue", "slayer", "ninja", "arcanist", ...
+  prerequisites String?  @db.Text
+  abilityType   String?             /// "spell-like" | "supernatural" | "extraordinary" | ...
+  description   String?  @db.LongText
+  sourceName    String?
+  sourceUrl     String?  @unique
+  edition       String   @default("PF1e")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([name])
+  @@index([talentFamily])
+  @@index([className])
+  @@index([abilityType])
+}
+
+// ReferenceTrait
+// Character traits (combat, magic, social, race, religion, regional, equipment).
 model ReferenceTrait {
   id            String   @id @default(uuid())
   name          String
@@ -221,18 +371,17 @@ model ReferenceTrait {
   @@index([traitType])
 }
 
-// ── Reference Equipment ───────────────────────────────────────────────────────
+// ReferenceEquipment
 // Weapons, armor, shields, and adventuring gear.
-
 model ReferenceEquipment {
   id          String   @id @default(uuid())
   name        String
   category    String?             /// "weapon" | "armor" | "shield" | "gear" | "mount" | "trade good" | ...
   subCategory String?             /// "simple" | "martial" | "exotic" | "light armor" | ...
   cost        String?             /// "15 gp"
-  weight      String?             /// "4 lbs" | "—"
+  weight      String?             /// "4 lbs" | "-"
   description String?  @db.LongText
-  properties  Json?               /// category-specific: {dmg, crit, range, acBonus, armorCheck, ...}
+  properties  Json?               /// category-specific: { dmg, crit, range, acBonus, armorCheck, ... }
   sourceName  String?
   sourceUrl   String?  @unique
   edition     String   @default("PF1e")
@@ -243,30 +392,29 @@ model ReferenceEquipment {
   @@index([category])
 }
 
-// ── Reference Monster ─────────────────────────────────────────────────────────
+// ReferenceMonster
 // Bestiary entries with stat block data.
-
 model ReferenceMonster {
-  id             String   @id @default(uuid())
-  name           String
-  cr             String?             /// "1/2" | "1" | "5" | "20"
-  xp             Int?
-  monsterType    String?             /// "humanoid" | "undead" | "dragon" | ...
-  subtype        String?             /// "goblinoid" | "elf" | ...
-  size           String?             /// "Fine" … "Colossal"
-  alignment      String?
-  hp             Int?
-  hd             String?             /// "2d8+4"
-  ac             Int?
-  initiative     Int?
-  speed          String?             /// "30 ft., fly 60 ft. (average)"
-  description    String?  @db.LongText
-  statBlock      Json?               /// full parsed stat block object
-  sourceName     String?
-  sourceUrl      String?  @unique
-  edition        String   @default("PF1e")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id          String   @id @default(uuid())
+  name        String
+  cr          String?             /// "1/2" | "1" | "5" | "20"
+  xp          Int?
+  monsterType String?             /// "humanoid" | "undead" | "dragon" | ...
+  subtype     String?             /// "goblinoid" | "elf" | ...
+  size        String?             /// "Fine" ... "Colossal"
+  alignment   String?
+  hp          Int?
+  hd          String?             /// "2d8+4"
+  ac          Int?
+  initiative  Int?
+  speed       String?             /// "30 ft., fly 60 ft. (average)"
+  description String?  @db.LongText
+  statBlock   Json?               /// full parsed stat block object
+  sourceName  String?
+  sourceUrl   String?  @unique
+  edition     String   @default("PF1e")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([name])
   @@index([cr])

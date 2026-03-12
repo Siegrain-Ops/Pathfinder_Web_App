@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// import-feats.ts — PF1e feat importer (refactored with base framework)
+// import-feats.ts - PF1e feat importer
 //
 // Usage:
 //   npm run import:feats
@@ -8,123 +8,137 @@
 // ---------------------------------------------------------------------------
 
 import 'dotenv/config'
-import { prisma }                from '../src/common/db/prisma'
-import { parseFeatListPage }     from './lib/parser-feats'
-import { load }                  from './lib/html-utils'
-import { runImport,
-         parseCliOptions,
-         type EntityImporter }   from './lib/base-importer'
+import { prisma } from '../src/common/db/prisma'
+import { parseCliOptions } from './lib/base-importer'
+import { parseFeatListPage, parseFeatPage, type ParsedFeat, type ParsedFeatIndex } from './lib/parser-feats'
+import { fetchHtml, sleep } from './lib/scraper'
 
-const BASE_URL  = 'https://www.d20pfsrd.com'
-const LIST_URL  = `${BASE_URL}/feats/all-feats`
+const BASE_URL = 'https://www.d20pfsrd.com'
+const LIST_URL = `${BASE_URL}/feats/`
+const CONCURRENCY = 6
+const REQUEST_DELAY_MS = 250
 
-interface FlatFeat {
-  name:         string
-  featType:     string | null
-  prerequisites: string | null
-  benefit:      string | null
-  description:  string | null
-  sourceUrl:    string
+async function upsertFeat(feat: ParsedFeat): Promise<'created' | 'updated'> {
+  const existing = await prisma.referenceFeat.findUnique({
+    where: { sourceUrl: feat.sourceUrl },
+    select: { id: true },
+  })
+
+  await prisma.referenceFeat.upsert({
+    where: { sourceUrl: feat.sourceUrl },
+    create: {
+      name: feat.name,
+      featType: feat.featType,
+      prerequisites: feat.prerequisites,
+      benefit: feat.benefit,
+      normalText: feat.normalText,
+      specialText: feat.specialText,
+      description: feat.description,
+      sourceName: 'd20pfsrd.com',
+      sourceUrl: feat.sourceUrl,
+    },
+    update: {
+      name: feat.name,
+      featType: feat.featType,
+      prerequisites: feat.prerequisites,
+      benefit: feat.benefit,
+      normalText: feat.normalText,
+      specialText: feat.specialText,
+      description: feat.description,
+    },
+  })
+
+  return existing ? 'updated' : 'created'
 }
 
-const importer: EntityImporter<FlatFeat> = {
-  label: 'Feat',
-  concurrency:    1,     // feat list is a single page — no concurrency needed
-  requestDelayMs: 0,
+function createLimiter(max: number) {
+  let active = 0
+  const queue: Array<() => void> = []
 
-  listUrls() {
-    // All feats are on a single list page — no per-letter index needed.
-    // We return a sentinel so extractLinks is called once with the full list HTML.
-    return [LIST_URL]
-  },
+  return async function limit<T>(fn: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const run = () => {
+        active++
+        fn().then(resolve, reject).finally(() => {
+          active--
+          if (queue.length > 0) queue.shift()?.()
+        })
+      }
 
-  extractLinks(_html, _baseUrl) {
-    // For feats we parse all data directly from the list page, so we return
-    // a single synthetic "url" that causes parsePage to be called once.
-    return [`${LIST_URL}#all`]
-  },
-
-  // parsePage is not used here — all feats come from the index
-  parsePage(_html, _url) { return null },
-
-  async upsert(feat) {
-    const existing = await prisma.referenceFeat.findUnique({
-      where: { sourceUrl: feat.sourceUrl },
-      select: { id: true },
+      if (active < max) run()
+      else queue.push(run)
     })
-
-    await prisma.referenceFeat.upsert({
-      where:  { sourceUrl: feat.sourceUrl },
-      create: {
-        name:          feat.name,
-        featType:      feat.featType,
-        prerequisites: feat.prerequisites,
-        benefit:       feat.benefit,
-        description:   feat.description,
-        sourceName:    'd20pfsrd.com',
-        sourceUrl:     feat.sourceUrl,
-      },
-      update: {
-        name:          feat.name,
-        featType:      feat.featType,
-        prerequisites: feat.prerequisites,
-        benefit:       feat.benefit,
-        description:   feat.description,
-      },
-    })
-
-    return existing ? 'updated' : 'created'
-  },
+  }
 }
 
-// ── Override: feat list needs a different flow — fetch once, parse many ───────
+async function fetchAndParseFeat(entry: ParsedFeatIndex): Promise<ParsedFeat | null> {
+  await sleep(REQUEST_DELAY_MS)
+  const html = await fetchHtml(entry.sourceUrl)
+  return parseFeatPage(html, entry.sourceUrl, entry)
+}
 
 async function main() {
   const opts = parseCliOptions()
 
   console.log('─'.repeat(55))
-  console.log('  Pathfinder 1e — Feat Importer')
+  console.log('  Pathfinder 1e - Feat Importer')
   console.log(`  Dry run : ${opts.dryRun}   Debug : ${opts.debug}`)
+  if (opts.limit) console.log(`  Limit   : ${opts.limit}`)
   console.log('─'.repeat(55))
 
-  const { fetchHtml } = await import('./lib/scraper')
-  const html  = await fetchHtml(LIST_URL)
-  let feats   = parseFeatListPage(html, BASE_URL)
+  const listHtml = await fetchHtml(LIST_URL)
+  let entries = parseFeatListPage(listHtml, BASE_URL)
 
-  console.log(`Parsed ${feats.length} feats from source page.`)
+  console.log(`Parsed ${entries.length} feat links from source page.`)
 
-  if (opts.limit) feats = feats.slice(0, opts.limit)
+  if (opts.limit) entries = entries.slice(0, opts.limit)
 
-  let created = 0, updated = 0, failed = 0
+  const total = entries.length
+  const stats = { created: 0, updated: 0, skipped: 0, failed: 0 }
+  const limit = createLimiter(CONCURRENCY)
 
-  for (let i = 0; i < feats.length; i++) {
-    const f = feats[i]
-    process.stdout.write(`[${i + 1}/${feats.length}] ${f.name}`)
+  console.log(`\nEntities to process: ${total}\n`)
 
-    if (opts.debug) {
-      console.log('\n' + JSON.stringify(f, null, 2))
-    }
+  await Promise.all(entries.map((entry, index) =>
+    limit(async () => {
+      try {
+        const feat = await fetchAndParseFeat(entry)
+        if (!feat) {
+          process.stdout.write(`[${index + 1}/${total}] SKIP (unparseable): ${entry.sourceUrl}\n`)
+          stats.skipped++
+          return
+        }
 
-    if (opts.dryRun) {
-      process.stdout.write(' (dry-run)\n')
-      continue
-    }
+        process.stdout.write(`[${index + 1}/${total}] ${feat.name}\n`)
 
-    try {
-      const r = await importer.upsert(f as FlatFeat)
-      process.stdout.write(r === 'created' ? ' ✓\n' : ' ~\n')
-      if (r === 'created') created++; else updated++
-    } catch (err) {
-      process.stdout.write(` FAIL: ${String(err)}\n`)
-      failed++
-    }
-  }
+        if (opts.debug) {
+          console.log(JSON.stringify(feat, null, 2))
+        }
+
+        if (opts.dryRun) {
+          stats.skipped++
+          return
+        }
+
+        const result = await upsertFeat(feat)
+        if (result === 'created') stats.created++
+        else stats.updated++
+      } catch (error) {
+        process.stdout.write(`[${index + 1}/${total}] FAIL: ${entry.sourceUrl} - ${String(error)}\n`)
+        stats.failed++
+      }
+    })
+  ))
 
   console.log('\n' + '─'.repeat(55))
-  console.log(`  Imported : ${created}`)
-  console.log(`  Updated  : ${updated}`)
-  console.log(`  Failed   : ${failed}`)
+  console.log(`  Imported : ${stats.created}`)
+  console.log(`  Updated  : ${stats.updated}`)
+  console.log(`  Skipped  : ${stats.skipped}`)
+  console.log(`  Failed   : ${stats.failed}`)
   console.log('─'.repeat(55))
 }
 
-main().catch(err => { console.error(err); process.exit(1) })
+main().catch(error => {
+  console.error(error)
+  process.exit(1)
+})

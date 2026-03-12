@@ -72,3 +72,36 @@ export interface ReferenceClass {
   createdAt: string
   updatedAt: string
 }
+
+export interface ReferenceFeat {
+  id: string
+  name: string
+  featType: string | null
+  prerequisites: string | null
+  benefit: string | null
+  normalText: string | null
+  specialText: string | null
+  description: string | null
+  sourceName: string | null
+  sourceUrl: string | null
+  edition: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ReferenceAbilityResult {
+  id: string
+  name: string
+  kind: 'ability' | 'talent'
+  abilityType: string | null
+  category: string | null
+  className: string | null
+  sourceParentName: string | null
+  sourceOptionName: string | null
+  usesPerDay: number | null
+  frequencyText: string | null
+  levelRequirement: number | null
+  description: string | null
+  sourceName: string | null
+  sourceUrl: string | null
+}
