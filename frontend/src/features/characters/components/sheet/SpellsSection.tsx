@@ -48,6 +48,7 @@ export function SpellsSection() {
       description:     '',
       prepared:        0,
       cast:            0,
+      locked:          true,
     }
     updateSpells({ knownSpells: [...spells.knownSpells, spell] })
     setExpandedId(spell.id)
@@ -251,7 +252,9 @@ export function SpellsSection() {
         )}
 
         <div className="flex flex-col gap-2">
-          {spellsForLevel.map(spell => (
+          {spellsForLevel.map(spell => {
+          const isLocked = spell.locked !== false
+          return (
             <div key={spell.id} className="rounded border border-stone-700 bg-stone-900">
               {/* Header */}
               <div
@@ -262,6 +265,14 @@ export function SpellsSection() {
                   {spell.name || <span className="text-stone-500 italic">Unnamed Spell</span>}
                 </span>
                 <Badge variant="purple">{spell.school}</Badge>
+                <Button
+                  variant="ghost" size="sm"
+                  className={`p-1 ${isLocked ? 'text-amber-400 hover:text-amber-300' : 'text-stone-400 hover:text-stone-200'}`}
+                  title={isLocked ? 'Unlock spell fields' : 'Lock spell fields'}
+                  onClick={e => { e.stopPropagation(); updateSpell(spell.id, { locked: !isLocked }) }}
+                >
+                  {isLocked ? '🔒' : '🔓'}
+                </Button>
                 <Button
                   variant="ghost" size="sm"
                   className="text-stone-500 hover:text-red-400 p-1"
@@ -275,13 +286,18 @@ export function SpellsSection() {
               {/* Editor */}
               {expandedId === spell.id && (
                 <div className="border-t border-stone-700 px-3 py-3 flex flex-col gap-3">
+                  {isLocked && (
+                    <p className="text-xs text-amber-400/70 italic">
+                      Fields are locked. Click 🔒 to enable editing.
+                    </p>
+                  )}
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     <SpellField label="Name">
-                      <input className="field" value={spell.name}
+                      <input className="field" value={spell.name} disabled={isLocked}
                         onChange={e => updateSpell(spell.id, { name: e.target.value })} />
                     </SpellField>
                     <SpellField label="School">
-                      <select className="field" value={spell.school}
+                      <select className="field" value={spell.school} disabled={isLocked}
                         onChange={e => updateSpell(spell.id, { school: e.target.value as Spell['school'] })}>
                         {(['abjuration','conjuration','divination','enchantment','evocation',
                           'illusion','necromancy','transmutation','universal'] as const)
@@ -289,38 +305,41 @@ export function SpellsSection() {
                       </select>
                     </SpellField>
                     <SpellField label="Casting Time">
-                      <input className="field" value={spell.castingTime}
+                      <input className="field" value={spell.castingTime} disabled={isLocked}
                         onChange={e => updateSpell(spell.id, { castingTime: e.target.value })} />
                     </SpellField>
                     <SpellField label="Components">
                       <input
                         className="field"
                         value={formatComponents(spell.components)}
+                        disabled={isLocked}
                         onChange={e => updateSpell(spell.id, { components: parseComponents(e.target.value) })}
                         placeholder="V, S, M"
                       />
                     </SpellField>
                     <SpellField label="Range">
-                      <input className="field" value={spell.range}
+                      <input className="field" value={spell.range} disabled={isLocked}
                         onChange={e => updateSpell(spell.id, { range: e.target.value })} />
                     </SpellField>
                     <SpellField label="Duration">
-                      <input className="field" value={spell.duration}
+                      <input className="field" value={spell.duration} disabled={isLocked}
                         onChange={e => updateSpell(spell.id, { duration: e.target.value })} />
                     </SpellField>
                     <SpellField label="Saving Throw">
-                      <input className="field" value={spell.savingThrow}
+                      <input className="field" value={spell.savingThrow} disabled={isLocked}
                         onChange={e => updateSpell(spell.id, { savingThrow: e.target.value })} />
                     </SpellField>
                   </div>
                   <SpellField label="Description">
                     <textarea className="field min-h-[70px] resize-y" value={spell.description}
+                      disabled={isLocked}
                       onChange={e => updateSpell(spell.id, { description: e.target.value })} />
                   </SpellField>
                 </div>
               )}
             </div>
-          ))}
+          )
+        })}
         </div>
       </SectionPanel>
     </div>
@@ -388,6 +407,7 @@ function mapReferenceSpellToSpell(referenceSpell: ReferenceSpell, fallbackLevel:
     description: referenceSpell.description,
     prepared: 0,
     cast: 0,
+    locked: true,
   }
 }
 

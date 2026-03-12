@@ -34,6 +34,8 @@ export interface Spell {
   prepared: number
   /** Times cast today (for prepared casters) */
   cast: number
+  /** When true, all editable fields are read-only. Defaults to true for new spells. */
+  locked?: boolean
 }
 
 /** How many spells per day at each level — index = spell level */
