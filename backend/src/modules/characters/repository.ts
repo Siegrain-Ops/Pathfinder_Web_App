@@ -12,10 +12,17 @@ import type { CharacterData } from './types'
 
 /** Map a raw Prisma row to a typed record.
  *  Prisma returns `data` as `Prisma.JsonValue`; we cast to `CharacterData`. */
-function toRecord(row: { id: string; data: Prisma.JsonValue; createdAt: Date; updatedAt: Date }) {
+function toRecord(row: {
+  id: string
+  data: Prisma.JsonValue
+  referenceRaceId: string | null
+  createdAt: Date
+  updatedAt: Date
+}) {
   return {
     id:        row.id,
     data:      row.data as unknown as CharacterData,
+    referenceRaceId: row.referenceRaceId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -37,20 +44,24 @@ export const characterRepository = {
     return toRecord(row)
   },
 
-  async create(id: string, data: CharacterData) {
+  async create(id: string, data: CharacterData, referenceRaceId?: string | null) {
     const row = await prisma.character.create({
       data: {
         id,
         data: data as unknown as Prisma.InputJsonValue,
+        referenceRaceId,
       },
     })
     return toRecord(row)
   },
 
-  async update(id: string, data: CharacterData) {
+  async update(id: string, data: CharacterData, referenceRaceId?: string | null) {
     const row = await prisma.character.update({
       where: { id },
-      data:  { data: data as unknown as Prisma.InputJsonValue },
+      data:  {
+        data: data as unknown as Prisma.InputJsonValue,
+        ...(referenceRaceId !== undefined ? { referenceRaceId } : {}),
+      },
     })
     return toRecord(row)
   },

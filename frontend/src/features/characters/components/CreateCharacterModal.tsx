@@ -7,11 +7,12 @@ import {
   characterIdentitySchema,
   type CharacterIdentityFormValues,
 } from '@/lib/validators/character.validators'
-import { ALIGNMENTS, COMMON_RACES, COMMON_CLASSES } from '@/lib/constants'
+import { ALIGNMENTS, COMMON_CLASSES, COMMON_RACES } from '@/lib/constants'
 import { useCharacterStore }   from '@/app/store/characterStore'
 import { recomputeCharacter }  from '@/lib/formulas/character.formulas'
 import { createBlankCharacter } from '@/lib/utils/character.utils'
 import type { Alignment, SizeCategory } from '@/types'
+import { useReferenceRaces } from '../hooks/useReferenceRaces'
 
 interface CreateCharacterModalProps {
   open:    boolean
@@ -20,6 +21,8 @@ interface CreateCharacterModalProps {
 
 export function CreateCharacterModal({ open, onClose }: CreateCharacterModalProps) {
   const navigate = useNavigate()
+  const { races, isLoading: racesLoading } = useReferenceRaces()
+  const raceOptions = races.length > 0 ? races.map(race => race.name) : COMMON_RACES
 
   const {
     register,
@@ -55,7 +58,8 @@ export function CreateCharacterModal({ open, onClose }: CreateCharacterModalProp
       alignment: values.alignment as Alignment,
       size:      values.size as SizeCategory,
     })
-    const character = await useCharacterStore.getState().createCharacterWithData(data)
+    const referenceRaceId = races.find(race => race.name === values.race)?.id ?? null
+    const character = await useCharacterStore.getState().createCharacterWithData(data, referenceRaceId)
     reset()
     onClose()
     navigate(`/characters/${character.id}`)
@@ -77,10 +81,13 @@ export function CreateCharacterModal({ open, onClose }: CreateCharacterModalProp
         {/* Row: Race + Class + Level */}
         <div className="grid grid-cols-3 gap-3">
           <Field label="Race *" error={errors.race?.message}>
-            <input {...register('race')} list="races-list" placeholder="Human" />
-            <datalist id="races-list">
-              {COMMON_RACES.map(r => <option key={r} value={r} />)}
-            </datalist>
+            <select
+              className="field"
+              {...register('race')}
+              disabled={racesLoading}
+            >
+              {raceOptions.map(raceName => <option key={raceName} value={raceName}>{raceName}</option>)}
+            </select>
           </Field>
           <Field label="Class *" error={errors.className?.message}>
             <input {...register('className')} list="classes-list" placeholder="Fighter" />

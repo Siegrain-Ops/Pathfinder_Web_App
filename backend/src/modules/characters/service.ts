@@ -44,7 +44,7 @@ export const characterService = {
     const id   = randomUUID()
     // Frontend validates the full CharacterData shape; backend trusts it here.
     const data = input.data as unknown as CharacterData
-    return characterRepository.create(id, data)
+    return characterRepository.create(id, data, input.referenceRaceId)
   },
 
   async update(id: string, input: UpdateCharacterRequest) {
@@ -56,7 +56,7 @@ export const characterService = {
       ...existing.data,
       ...(input.data as unknown as Partial<CharacterData>),
     }
-    return characterRepository.update(id, merged)
+    return characterRepository.update(id, merged, input.referenceRaceId)
   },
 
   async delete(id: string) {
@@ -75,6 +75,6 @@ export const characterService = {
     }
 
     const newId = randomUUID()
-    return characterRepository.create(newId, copy)
+    return characterRepository.create(newId, copy, original.referenceRaceId)
   },
 }

@@ -130,6 +130,7 @@ export interface CharacterData {
 export interface Character {
   id: string
   data: CharacterData
+  referenceRaceId?: string | null
   createdAt: Date
   updatedAt: Date
 }

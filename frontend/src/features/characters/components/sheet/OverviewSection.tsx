@@ -1,13 +1,16 @@
 import { SectionPanel }      from './SectionPanel'
 import { useCharacterSheet } from '../../hooks/useCharacterSheet'
-import { ALIGNMENTS, COMMON_RACES, COMMON_CLASSES, SIZE_CATEGORIES } from '@/lib/constants'
+import { useReferenceRaces } from '../../hooks/useReferenceRaces'
+import { ALIGNMENTS, COMMON_CLASSES, COMMON_RACES, SIZE_CATEGORIES } from '@/lib/constants'
 
 export function OverviewSection() {
-  const { data, update } = useCharacterSheet()
+  const { data, update, setReferenceRaceId } = useCharacterSheet()
+  const { races, isLoading: racesLoading } = useReferenceRaces()
   if (!data) return null
 
   // Capture narrowed non-null reference so closures can access it safely
   const d = data
+  const raceOptions = races.length > 0 ? races.map(race => race.name) : COMMON_RACES
 
   function field(key: keyof typeof d) {
     return {
@@ -28,10 +31,21 @@ export function OverviewSection() {
         </FormField>
 
         <FormField label="Race">
-          <input className="field" list="race-list" {...field('race')} />
-          <datalist id="race-list">
-            {COMMON_RACES.map(r => <option key={r} value={r} />)}
-          </datalist>
+          <select
+            className="field"
+            value={data.race}
+            onChange={e => {
+              const nextRace = races.find(race => race.name === e.target.value) ?? null
+              update({ race: e.target.value })
+              setReferenceRaceId(nextRace?.id ?? null)
+            }}
+            disabled={racesLoading}
+          >
+            {!raceOptions.includes(data.race) && (
+              <option value={data.race}>{data.race}</option>
+            )}
+            {raceOptions.map(raceName => <option key={raceName} value={raceName}>{raceName}</option>)}
+          </select>
         </FormField>
         <FormField label="Class">
           <input className="field" list="class-list" {...field('className')} />

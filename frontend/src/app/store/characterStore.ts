@@ -22,7 +22,7 @@ interface CharacterState {
   // ── List actions ─────────────────────────────────────────
   fetchAll:             () => Promise<void>
   createCharacter:      () => Promise<Character>
-  createCharacterWithData: (data: CharacterData) => Promise<Character>
+  createCharacterWithData: (data: CharacterData, referenceRaceId?: string | null) => Promise<Character>
   deleteCharacter:      (id: string) => Promise<void>
   duplicateCharacter:   (id: string) => Promise<void>
 
@@ -30,6 +30,7 @@ interface CharacterState {
   loadCharacter:        (id: string) => Promise<void>
   saveCharacter:        () => Promise<void>
   updateCharacterData:  (patch: Partial<CharacterData>) => void
+  setReferenceRaceId:   (referenceRaceId: string | null) => void
   clearActive:          () => void
 }
 
@@ -73,8 +74,8 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   },
 
   // ── Create with pre-filled data ────────────────────────────────────────
-  createCharacterWithData: async (data: CharacterData) => {
-    const character = await characterService.create({ data })
+  createCharacterWithData: async (data: CharacterData, referenceRaceId?: string | null) => {
+    const character = await characterService.create({ data, referenceRaceId })
     set(state => ({ summaries: [...state.summaries, toSummary(character)] }))
     return character
   },
@@ -111,12 +112,15 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
     if (!active) return
     set({ isSaving: true })
     try {
-      const saved = await characterService.update(active.id, { data: active.data })
+      const savedWithRace = await characterService.update(active.id, {
+        data: active.data,
+        referenceRaceId: active.referenceRaceId ?? null,
+      })
       set(state => ({
-        active:   saved,
+        active:   savedWithRace,
         isDirty:  false,
         isSaving: false,
-        summaries: state.summaries.map(s => s.id === saved.id ? toSummary(saved) : s),
+        summaries: state.summaries.map(s => s.id === savedWithRace.id ? toSummary(savedWithRace) : s),
       }))
     } catch (err) {
       set({ error: String(err), isSaving: false })
@@ -129,6 +133,12 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
     if (!active) return
     const data = updateAndRecompute(active.data, patch)
     set({ active: { ...active, data }, isDirty: true })
+  },
+
+  setReferenceRaceId: (referenceRaceId) => {
+    const { active } = get()
+    if (!active) return
+    set({ active: { ...active, referenceRaceId }, isDirty: true })
   },
 
   // ── Clear active ───────────────────────────────────────────────────────

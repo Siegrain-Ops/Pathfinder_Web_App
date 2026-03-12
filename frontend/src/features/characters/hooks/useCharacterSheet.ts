@@ -12,6 +12,7 @@ export function useCharacterSheet() {
   const isDirty            = useCharacterStore(s => s.isDirty)
   const isSaving           = useCharacterStore(s => s.isSaving)
   const updateCharacterData = useCharacterStore(s => s.updateCharacterData)
+  const setReferenceRaceId = useCharacterStore(s => s.setReferenceRaceId)
   const saveCharacter      = useCharacterStore(s => s.saveCharacter)
 
   /** Deeply merge a partial update and trigger full recompute. */
@@ -24,6 +25,7 @@ export function useCharacterSheet() {
     isDirty,
     isSaving,
     update,
+    setReferenceRaceId,
     save:      saveCharacter,
   }
 }

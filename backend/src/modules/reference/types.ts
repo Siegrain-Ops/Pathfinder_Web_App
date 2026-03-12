@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { ReferenceSpell as PrismaSpell, ReferenceFeat as PrismaFeat } from '@prisma/client'
+import type { ReferenceRace as PrismaRace } from '@prisma/client'
 
 // ── Reference Spell ─────────────────────────────────────────────────────────
 
@@ -23,6 +24,15 @@ export interface SpellSearchParams {
 // ── Reference Feat ──────────────────────────────────────────────────────────
 
 export type ReferenceFeat = PrismaFeat
+
+export type ReferenceRace = PrismaRace
+
+export interface RaceSearchParams {
+  q?: string
+  category?: string
+  limit?: number
+  offset?: number
+}
 
 export interface FeatSearchParams {
   q?:     string   // name contains

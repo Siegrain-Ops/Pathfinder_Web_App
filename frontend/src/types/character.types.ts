@@ -68,6 +68,7 @@ export interface CharacterData {
 export interface Character {
   id:        string
   data:      CharacterData
+  referenceRaceId?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -75,11 +76,13 @@ export interface Character {
 /** Shape used when creating a new character (no id/timestamps). */
 export type CreateCharacterInput = {
   data: CharacterData
+  referenceRaceId?: string | null
 }
 
 /** Shape used for partial updates. */
 export type UpdateCharacterInput = {
   data: Partial<CharacterData>
+  referenceRaceId?: string | null
 }
 
 /** Lightweight card shown on the dashboard. */

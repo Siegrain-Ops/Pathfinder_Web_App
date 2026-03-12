@@ -10,10 +10,12 @@ export const characterDataSchema = z.record(z.unknown())
 
 export const createCharacterSchema = z.object({
   data: characterDataSchema,
+  referenceRaceId: z.string().uuid().nullable().optional(),
 })
 
 export const updateCharacterSchema = z.object({
   data: characterDataSchema,
+  referenceRaceId: z.string().uuid().nullable().optional(),
 })
 
 export type CreateCharacterRequest = z.infer<typeof createCharacterSchema>

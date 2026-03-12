@@ -1,11 +1,12 @@
-import { useState }          from 'react'
+import { useEffect, useState } from 'react'
 import { SectionPanel }      from './SectionPanel'
 import { StatInput }         from './StatInput'
 import { Button }            from '@/components/ui/Button'
 import { Badge }             from '@/components/ui/Badge'
 import { useCharacterSheet } from '../../hooks/useCharacterSheet'
 import { calcSpellDC }       from '@/lib/formulas/spells.formulas'
-import type { Spell, SpellSection } from '@/types'
+import { referenceSpellService } from '../../services/reference-spell.service'
+import type { ReferenceSpell, Spell, SpellSection } from '@/types'
 import type { AbilityScoreName } from '@/types'
 import { ABILITY_ABBR } from '@/lib/constants'
 
@@ -17,11 +18,16 @@ export function SpellsSection() {
   const { data, update } = useCharacterSheet()
   const [activeLevel, setActiveLevel] = useState<number>(0)
   const [expandedId, setExpandedId]   = useState<string | null>(null)
+  const [searchTerm, setSearchTerm]   = useState('')
+  const [searchResults, setSearchResults] = useState<ReferenceSpell[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
 
   if (!data) return null
 
   const { spells, stats } = data
   const castingMod = stats[spells.castingStat].modifier
+  const classKey = inferClassKey(data.className)
 
   function updateSpells(patch: Partial<SpellSection>) {
     update({ spells: { ...data!.spells, ...patch } })
@@ -56,6 +62,46 @@ export function SpellsSection() {
       knownSpells: spells.knownSpells.map(s => s.id === id ? { ...s, ...patch } : s),
     })
   }
+
+  function addSpellFromReference(referenceSpell: ReferenceSpell) {
+    const spell = mapReferenceSpellToSpell(referenceSpell, activeLevel)
+    updateSpells({ knownSpells: [...spells.knownSpells, spell] })
+    setExpandedId(spell.id)
+    setSearchTerm('')
+    setSearchResults([])
+    setSearchError(null)
+  }
+
+  useEffect(() => {
+    const query = searchTerm.trim()
+    if (query.length < 2) {
+      setSearchResults([])
+      setSearchError(null)
+      setIsSearching(false)
+      return
+    }
+
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        setIsSearching(true)
+        setSearchError(null)
+        const results = await referenceSpellService.search({
+          q: query,
+          className: classKey,
+          level: activeLevel,
+          limit: 12,
+        })
+        setSearchResults(results)
+      } catch (error) {
+        setSearchResults([])
+        setSearchError(error instanceof Error ? error.message : 'Spell search failed')
+      } finally {
+        setIsSearching(false)
+      }
+    }, 250)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [activeLevel, classKey, searchTerm])
 
   const spellsForLevel = spells.knownSpells.filter(s => s.level === activeLevel)
 
@@ -117,6 +163,56 @@ export function SpellsSection() {
         title="Known Spells"
         action={<Button size="sm" onClick={addSpell}>+ Add Spell</Button>}
       >
+        <div className="mb-4 flex flex-col gap-2">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-stone-500">
+              Search spells in DB{classKey ? ` for ${classKey}` : ''} at level {activeLevel}
+            </span>
+            <input
+              className="field"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Type at least 2 characters..."
+            />
+          </label>
+
+          {isSearching && (
+            <p className="text-xs text-stone-500">Searching reference archive...</p>
+          )}
+
+          {searchError && (
+            <p className="text-xs text-red-400">{searchError}</p>
+          )}
+
+          {searchResults.length > 0 && (
+            <div className="max-h-72 overflow-y-auto rounded border border-stone-700 bg-stone-950">
+              {searchResults.map(result => {
+                const alreadyAdded = spells.knownSpells.some(spell => spell.name === result.name && spell.level === activeLevel)
+                return (
+                  <button
+                    key={result.id}
+                    type="button"
+                    className="flex w-full items-start justify-between gap-3 border-b border-stone-800 px-3 py-2 text-left transition-colors last:border-b-0 hover:bg-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => addSpellFromReference(result)}
+                    disabled={alreadyAdded}
+                  >
+                    <span className="flex flex-col">
+                      <span className="font-medium text-stone-200">{result.name}</span>
+                      <span className="text-xs text-stone-500">
+                        {formatReferenceLevels(result.spellLevelJson)}
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <Badge variant="purple">{result.school ?? 'unknown'}</Badge>
+                      {alreadyAdded && <span className="text-xs text-stone-500">Added</span>}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Level filter tabs */}
         <div className="flex gap-1 mb-4 flex-wrap">
           {SPELL_LEVELS.map(lvl => {
@@ -239,4 +335,97 @@ function SpellField({ label, children }: { label: string; children: React.ReactN
       {children}
     </label>
   )
+}
+
+function inferClassKey(className: string): string | undefined {
+  const normalized = className.trim().toLowerCase()
+  if (!normalized) return undefined
+
+  const aliases: Record<string, string> = {
+    sorcerer: 'sorcerer',
+    wizard: 'wizard',
+    cleric: 'cleric',
+    druid: 'druid',
+    bard: 'bard',
+    paladin: 'paladin',
+    ranger: 'ranger',
+    inquisitor: 'inquisitor',
+    summoner: 'summoner',
+    witch: 'witch',
+    magus: 'magus',
+    alchemist: 'alchemist',
+    oracle: 'oracle',
+    antipaladin: 'antipaladin',
+  }
+
+  return aliases[normalized] ?? normalized.split(/\s+/)[0]
+}
+
+function mapReferenceSpellToSpell(referenceSpell: ReferenceSpell, fallbackLevel: number): Spell {
+  const school = normalizeSchool(referenceSpell.school)
+  const components = parseComponents(referenceSpell.components)
+  const preferredLevel = getPreferredLevel(referenceSpell, fallbackLevel)
+
+  return {
+    id: crypto.randomUUID(),
+    name: referenceSpell.name,
+    level: preferredLevel,
+    school,
+    castingTime: referenceSpell.castingTime ?? '',
+    range: referenceSpell.rangeText ?? referenceSpell.targetText ?? referenceSpell.areaText ?? referenceSpell.effectText ?? '',
+    duration: referenceSpell.durationText ?? '',
+    savingThrow: referenceSpell.savingThrow ?? '',
+    spellResistance: isSpellResistanceEnabled(referenceSpell.spellResistance),
+    components,
+    description: referenceSpell.description,
+    prepared: 0,
+    cast: 0,
+  }
+}
+
+function normalizeSchool(value: string | null): Spell['school'] {
+  const fallback: Spell['school'] = 'evocation'
+  if (!value) return fallback
+
+  const normalized = value.trim().toLowerCase() as Spell['school']
+  const validSchools: Spell['school'][] = [
+    'abjuration', 'conjuration', 'divination', 'enchantment', 'evocation',
+    'illusion', 'necromancy', 'transmutation', 'universal',
+  ]
+
+  return validSchools.includes(normalized) ? normalized : fallback
+}
+
+function parseComponents(value: string | null): Spell['components'] {
+  if (!value) return ['V', 'S']
+
+  const allowed = new Set<Spell['components'][number]>(['V', 'S', 'M', 'F', 'DF', 'XP'])
+  const components = value
+    .split(/[,\s/]+/)
+    .map(token => token.replace(/[()]/g, '').toUpperCase())
+    .filter((token): token is Spell['components'][number] => allowed.has(token as Spell['components'][number]))
+
+  return components.length > 0 ? components : ['V', 'S']
+}
+
+function isSpellResistanceEnabled(value: string | null): boolean {
+  if (!value) return false
+  return !/^no\b/i.test(value.trim())
+}
+
+function getPreferredLevel(referenceSpell: ReferenceSpell, fallbackLevel: number): Spell['level'] {
+  const levels = Object.values(referenceSpell.spellLevelJson)
+    .filter((value): value is number => Number.isInteger(value) && value >= 0 && value <= 9)
+
+  if (levels.includes(fallbackLevel)) return fallbackLevel as Spell['level']
+  return (levels[0] ?? fallbackLevel) as Spell['level']
+}
+
+function formatReferenceLevels(levels: Record<string, number>): string {
+  const entries = Object.entries(levels)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .slice(0, 4)
+    .map(([className, level]) => `${className} ${level}`)
+
+  return entries.join(' • ')
 }
