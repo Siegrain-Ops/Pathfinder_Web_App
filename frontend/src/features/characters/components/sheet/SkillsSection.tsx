@@ -38,7 +38,7 @@ export function SkillsSection() {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-stone-700 text-[10px] uppercase tracking-wider text-stone-500">
+            <tr className="border-b border-stone-700/60 text-[10px] uppercase tracking-[0.12em] text-stone-500">
               <th className="text-left py-2 pr-3 w-6">CS</th>
               <th className="text-left py-2 pr-3">Skill</th>
               <th className="text-center py-2 px-2 w-10">Stat</th>
@@ -47,13 +47,13 @@ export function SkillsSection() {
               <th className="text-center py-2 px-2 w-16">Total</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-stone-800">
+          <tbody className="divide-y divide-stone-800/60">
             {filtered.map(skill => (
               <tr
                 key={skill.id}
                 className={clsx(
-                  'hover:bg-stone-700/30 transition-colors',
-                  skill.trainedOnly && skill.ranks === 0 && 'opacity-50',
+                  'hover:bg-stone-700/20 transition-colors duration-100',
+                  skill.trainedOnly && skill.ranks === 0 && 'opacity-40',
                 )}
               >
                 {/* Class skill checkbox */}
@@ -88,9 +88,10 @@ export function SkillsSection() {
                     max={20}
                     value={skill.ranks}
                     onChange={e => updateSkill(skill.id, { ranks: Number(e.target.value) })}
-                    className="w-12 rounded border border-stone-600 bg-stone-900 text-center
+                    className="w-12 rounded-md border border-stone-600/80 bg-stone-900 text-center
                                text-sm text-stone-100 py-0.5 focus:outline-none
-                               focus:ring-1 focus:ring-amber-500/50"
+                               transition-colors duration-150 hover:border-stone-500/80
+                               focus:ring-1 focus:ring-amber-500/40"
                   />
                 </td>
 

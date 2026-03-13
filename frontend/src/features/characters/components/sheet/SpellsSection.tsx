@@ -331,7 +331,7 @@ export function SpellsSection() {
                     </SpellField>
                   </div>
                   <SpellField label="Description">
-                    <textarea className="field min-h-[70px] resize-y" value={spell.description}
+                    <textarea className="field min-h-[120px] resize-y" value={spell.description}
                       disabled={isLocked}
                       onChange={e => updateSpell(spell.id, { description: e.target.value })} />
                   </SpellField>

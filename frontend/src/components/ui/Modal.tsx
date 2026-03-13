@@ -31,13 +31,13 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
       {/* Panel */}
       <div
         className={clsx(
-          'relative z-10 w-full max-w-md rounded-lg border border-stone-700',
-          'bg-stone-800 shadow-2xl',
+          'relative z-10 w-full max-w-md rounded-xl border border-stone-700/60',
+          'bg-stone-800 shadow-2xl shadow-black/60',
           className,
         )}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-700">
-          <h2 className="font-display font-semibold text-stone-100">{title}</h2>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-700/60 bg-stone-800/50 rounded-t-xl">
+          <h2 className="font-display font-semibold text-stone-100 tracking-wide">{title}</h2>
           <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close">
             ✕
           </Button>

@@ -1,4 +1,6 @@
+import { useState }          from 'react'
 import { SectionPanel }      from './SectionPanel'
+import { Button }            from '@/components/ui/Button'
 import { useCharacterSheet } from '../../hooks/useCharacterSheet'
 import { useReferenceClasses } from '../../hooks/useReferenceClasses'
 import { useReferenceRaces } from '../../hooks/useReferenceRaces'
@@ -8,6 +10,8 @@ export function OverviewSection() {
   const { data, update, setReferenceRaceId } = useCharacterSheet()
   const { classes, isLoading: classesLoading } = useReferenceClasses()
   const { races, isLoading: racesLoading } = useReferenceRaces()
+  const [isLocked, setIsLocked] = useState(true)
+
   if (!data) return null
 
   // Capture narrowed non-null reference so closures can access it safely
@@ -24,119 +28,187 @@ export function OverviewSection() {
   }
 
   return (
-    <SectionPanel title="Overview">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <FormField label="Character Name">
-          <input className="field" {...field('name')} />
-        </FormField>
-        <FormField label="Player Name">
-          <input className="field" {...field('playerName')} />
-        </FormField>
+    <SectionPanel
+      title="Overview"
+      action={
+        <Button
+          variant="ghost" size="sm"
+          className={`p-1 ${isLocked ? 'text-amber-400 hover:text-amber-300' : 'text-stone-400 hover:text-stone-200'}`}
+          title={isLocked ? 'Unlock overview fields' : 'Lock overview fields'}
+          onClick={() => setIsLocked(l => !l)}
+        >
+          {isLocked ? '🔒' : '🔓'}
+        </Button>
+      }
+    >
+      <div className="flex flex-col gap-6">
 
-        <FormField label="Race">
-          <select
-            className="field"
-            value={data.race}
-            onChange={e => {
-              const nextRace = races.find(race => race.name === e.target.value) ?? null
-              update({ race: e.target.value })
-              setReferenceRaceId(nextRace?.id ?? null)
-            }}
-            disabled={racesLoading}
-          >
-            {!raceOptions.includes(data.race) && (
-              <option value={data.race}>{data.race}</option>
-            )}
-            {raceOptions.map(raceName => <option key={raceName} value={raceName}>{raceName}</option>)}
-          </select>
-        </FormField>
-        <FormField label="Class">
-          <select
-            className="field"
-            value={data.className}
-            onChange={e => update({ className: e.target.value })}
-            disabled={classesLoading}
-          >
-            {!classOptions.includes(data.className) && (
-              <option value={data.className}>{data.className}</option>
-            )}
-            {classOptions.map(className => <option key={className} value={className}>{className}</option>)}
-          </select>
-        </FormField>
-        <FormField label="Level">
-          <input
-            className="field"
-            type="number" min={1} max={20}
-            value={data.level}
-            onChange={e => update({ level: Number(e.target.value) })}
-          />
-        </FormField>
+        {isLocked && (
+          <p className="text-xs text-amber-400/70 italic">
+            Fields are locked. Click 🔒 to enable editing.
+          </p>
+        )}
 
-        <FormField label="Alignment">
-          <select
-            className="field"
-            value={data.alignment}
-            onChange={e => update({ alignment: e.target.value as typeof d.alignment })}
-          >
-            {ALIGNMENTS.map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
-        </FormField>
-        <FormField label="Background">
-          <input className="field" {...field('background')} />
-        </FormField>
-        <FormField label="Deity">
-          <input className="field" {...field('deity')} />
-        </FormField>
-        <FormField label="Size">
-          <select className="field" value={data.size} onChange={e => update({ size: e.target.value as typeof d.size })}>
-            {SIZE_CATEGORIES.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </FormField>
+        {/* ── Identity ──────────────────────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField label="Character Name">
+            <input
+              className="field text-base font-semibold text-stone-100 placeholder:font-normal"
+              placeholder="Unnamed Hero"
+              disabled={isLocked}
+              {...field('name')}
+            />
+          </FormField>
+          <FormField label="Player Name">
+            <input className="field" disabled={isLocked} {...field('playerName')} />
+          </FormField>
+        </div>
 
-        <FormField label="Homeland">
-          <input className="field" {...field('homeland')} />
-        </FormField>
-        <FormField label="Age">
-          <input
-            className="field" type="number" min={0}
-            value={data.age}
-            onChange={e => update({ age: Number(e.target.value) })}
-          />
-        </FormField>
-        <FormField label="Gender">
-          <input className="field" {...field('gender')} />
-        </FormField>
-        <FormField label="Height">
-          <input className="field" placeholder="e.g. 5'10&quot;" {...field('height')} />
-        </FormField>
-        <FormField label="Weight">
-          <input className="field" placeholder="e.g. 180 lbs" {...field('weight')} />
-        </FormField>
+        {/* ── Class & Race ──────────────────────────────────── */}
+        <div className="flex flex-col gap-3">
+          <SubHeader>Class &amp; Race</SubHeader>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            <FormField label="Race">
+              <select
+                className="field"
+                value={data.race}
+                onChange={e => {
+                  const nextRace = races.find(race => race.name === e.target.value) ?? null
+                  update({ race: e.target.value })
+                  setReferenceRaceId(nextRace?.id ?? null)
+                }}
+                disabled={isLocked || racesLoading}
+              >
+                {!raceOptions.includes(data.race) && (
+                  <option value={data.race}>{data.race}</option>
+                )}
+                {raceOptions.map(raceName => <option key={raceName} value={raceName}>{raceName}</option>)}
+              </select>
+            </FormField>
+            <FormField label="Class">
+              <select
+                className="field"
+                value={data.className}
+                onChange={e => update({ className: e.target.value })}
+                disabled={isLocked || classesLoading}
+              >
+                {!classOptions.includes(data.className) && (
+                  <option value={data.className}>{data.className}</option>
+                )}
+                {classOptions.map(className => <option key={className} value={className}>{className}</option>)}
+              </select>
+            </FormField>
+            <FormField label="Level">
+              <input
+                className="field"
+                type="number" min={1} max={20}
+                value={data.level}
+                disabled={isLocked}
+                onChange={e => update({ level: Number(e.target.value) })}
+              />
+            </FormField>
+            <FormField label="Alignment">
+              <select
+                className="field"
+                value={data.alignment}
+                disabled={isLocked}
+                onChange={e => update({ alignment: e.target.value as typeof d.alignment })}
+              >
+                {ALIGNMENTS.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </FormField>
+            <FormField label="Size">
+              <select className="field" value={data.size} disabled={isLocked} onChange={e => update({ size: e.target.value as typeof d.size })}>
+                {SIZE_CATEGORIES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </FormField>
+          </div>
+        </div>
 
-        <FormField label="Experience">
-          <input
-            className="field" type="number" min={0}
-            value={data.experience}
-            onChange={e => update({ experience: Number(e.target.value) })}
-          />
-        </FormField>
-        <FormField label="Languages">
-          <input
-            className="field"
-            value={data.languages.join(', ')}
-            onChange={e => update({ languages: e.target.value.split(',').map(l => l.trim()).filter(Boolean) })}
-            placeholder="Common, Elvish, …"
-          />
-        </FormField>
+        {/* ── Background & Lore ─────────────────────────────── */}
+        <div className="flex flex-col gap-3">
+          <SubHeader>Background &amp; Lore</SubHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <FormField label="Background">
+              <input className="field" disabled={isLocked} {...field('background')} />
+            </FormField>
+            <FormField label="Deity">
+              <input className="field" disabled={isLocked} {...field('deity')} />
+            </FormField>
+            <FormField label="Homeland">
+              <input className="field" disabled={isLocked} {...field('homeland')} />
+            </FormField>
+          </div>
+        </div>
+
+        {/* ── Physical Description ──────────────────────────── */}
+        <div className="flex flex-col gap-3">
+          <SubHeader>Physical Description</SubHeader>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <FormField label="Age">
+              <input
+                className="field" type="number" min={0}
+                value={data.age}
+                disabled={isLocked}
+                onChange={e => update({ age: Number(e.target.value) })}
+              />
+            </FormField>
+            <FormField label="Gender">
+              <input className="field" disabled={isLocked} {...field('gender')} />
+            </FormField>
+            <FormField label="Height">
+              <input className="field" placeholder="e.g. 5'10&quot;" disabled={isLocked} {...field('height')} />
+            </FormField>
+            <FormField label="Weight">
+              <input className="field" placeholder="e.g. 180 lbs" disabled={isLocked} {...field('weight')} />
+            </FormField>
+          </div>
+        </div>
+
+        {/* ── Progression ───────────────────────────────────── */}
+        <div className="flex flex-col gap-3">
+          <SubHeader>Progression</SubHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField label="Experience Points">
+              <input
+                className="field" type="number" min={0}
+                value={data.experience}
+                disabled={isLocked}
+                onChange={e => update({ experience: Number(e.target.value) })}
+              />
+            </FormField>
+            <FormField label="Languages">
+              <input
+                className="field"
+                value={data.languages.join(', ')}
+                disabled={isLocked}
+                onChange={e => update({ languages: e.target.value.split(',').map(l => l.trim()).filter(Boolean) })}
+                placeholder="Common, Elvish, …"
+              />
+            </FormField>
+          </div>
+        </div>
+
       </div>
     </SectionPanel>
+  )
+}
+
+function SubHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500 whitespace-nowrap">
+        {children}
+      </span>
+      <div className="flex-1 h-px bg-stone-700/50" />
+    </div>
   )
 }
 
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-xs font-medium text-stone-400">{label}</span>
+      <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-stone-500">{label}</span>
       {children}
     </label>
   )

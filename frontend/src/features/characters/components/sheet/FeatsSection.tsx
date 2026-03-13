@@ -193,7 +193,7 @@ export function FeatsSection() {
                   </FeatField>
                   <FeatField label="Benefit">
                     <textarea
-                      className="field min-h-[60px] resize-y"
+                      className="field min-h-[120px] resize-y"
                       value={feat.benefit}
                       disabled={isLocked}
                       onChange={e => updateFeat(feat.id, { benefit: e.target.value })}
@@ -201,7 +201,7 @@ export function FeatsSection() {
                   </FeatField>
                   <FeatField label="Normal">
                     <textarea
-                      className="field min-h-[40px] resize-y"
+                      className="field min-h-[80px] resize-y"
                       value={feat.normal}
                       disabled={isLocked}
                       onChange={e => updateFeat(feat.id, { normal: e.target.value })}
@@ -209,7 +209,7 @@ export function FeatsSection() {
                   </FeatField>
                   <FeatField label="Special">
                     <textarea
-                      className="field min-h-[40px] resize-y"
+                      className="field min-h-[80px] resize-y"
                       value={feat.special}
                       disabled={isLocked}
                       onChange={e => updateFeat(feat.id, { special: e.target.value })}
@@ -217,7 +217,7 @@ export function FeatsSection() {
                   </FeatField>
                   <FeatField label="Notes">
                     <textarea
-                      className="field min-h-[40px] resize-y"
+                      className="field min-h-[80px] resize-y"
                       value={feat.notes}
                       disabled={isLocked}
                       onChange={e => updateFeat(feat.id, { notes: e.target.value })}

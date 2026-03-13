@@ -32,14 +32,14 @@ export function CharacterSheetHeader() {
   }
 
   return (
-    <div className="bg-stone-900 border-b border-stone-700 px-6 py-3 flex flex-wrap items-center gap-4">
+    <div className="bg-stone-950 border-b border-stone-800 px-6 py-3 flex flex-wrap items-center gap-4">
       {/* Back */}
-      <Link to="/" className="text-stone-400 hover:text-stone-200 transition-colors text-sm">
+      <Link to="/" className="text-stone-500 hover:text-amber-400 transition-colors duration-150 text-sm font-medium">
         ← Characters
       </Link>
 
       {/* Divider */}
-      <div className="hidden sm:block w-px h-6 bg-stone-700" />
+      <div className="hidden sm:block w-px h-6 bg-stone-800" />
 
       {/* Identity */}
       <div className="flex-1 min-w-0">
@@ -59,8 +59,9 @@ export function CharacterSheetHeader() {
       <div className="flex items-center gap-2 shrink-0">
         <button
           onClick={() => adjustHp(-1)}
-          className="h-7 w-7 rounded border border-stone-600 bg-stone-800 text-stone-300
-                     hover:bg-red-900/40 hover:border-red-700 transition-colors font-bold text-lg leading-none"
+          className="h-7 w-7 rounded-md border border-stone-700 bg-stone-800/80 text-stone-300
+                     hover:bg-red-900/50 hover:border-red-700/70 hover:text-red-300
+                     transition-all duration-150 font-bold text-lg leading-none"
         >
           −
         </button>
@@ -68,26 +69,27 @@ export function CharacterSheetHeader() {
         <div className="flex flex-col items-center gap-0.5 w-28">
           <div className="flex items-baseline gap-1 text-sm">
             <span className="font-bold text-stone-100">{hitPoints.current}</span>
-            <span className="text-stone-500">/</span>
+            <span className="text-stone-600">/</span>
             <span className="text-stone-400">{hitPoints.max}</span>
             {hitPoints.temp > 0 && (
-              <span className="text-blue-400 text-xs">+{hitPoints.temp}tmp</span>
+              <span className="text-blue-400 text-xs font-medium">+{hitPoints.temp}</span>
             )}
           </div>
           {/* HP bar */}
-          <div className="w-full h-1.5 rounded-full bg-stone-700">
+          <div className="w-full h-2 rounded-full bg-stone-800">
             <div
-              className={clsx('h-full rounded-full transition-all', hpColor)}
+              className={clsx('h-full rounded-full transition-all duration-300', hpColor)}
               style={{ width: `${hpPercent}%` }}
             />
           </div>
-          <span className="text-[10px] text-stone-500 uppercase tracking-wider">Hit Points</span>
+          <span className="text-[9px] text-stone-600 uppercase tracking-widest">Hit Points</span>
         </div>
 
         <button
           onClick={() => adjustHp(1)}
-          className="h-7 w-7 rounded border border-stone-600 bg-stone-800 text-stone-300
-                     hover:bg-green-900/40 hover:border-green-700 transition-colors font-bold text-lg leading-none"
+          className="h-7 w-7 rounded-md border border-stone-700 bg-stone-800/80 text-stone-300
+                     hover:bg-green-900/50 hover:border-green-700/70 hover:text-green-300
+                     transition-all duration-150 font-bold text-lg leading-none"
         >
           +
         </button>

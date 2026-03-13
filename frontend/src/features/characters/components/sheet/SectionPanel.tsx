@@ -10,9 +10,9 @@ interface SectionPanelProps {
 
 export function SectionPanel({ title, action, children, className }: SectionPanelProps) {
   return (
-    <section className={clsx('rounded-lg border border-stone-700 bg-stone-800', className)}>
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-stone-700">
-        <h3 className="font-display font-semibold text-sm uppercase tracking-widest text-amber-400">
+    <section className={clsx('rounded-xl border border-stone-700/60 bg-stone-800/90 shadow-md shadow-black/30', className)}>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-stone-700/60 bg-stone-800/50 rounded-t-xl">
+        <h3 className="font-display font-semibold text-xs uppercase tracking-[0.18em] text-amber-400/90">
           {title}
         </h3>
         {action && <div>{action}</div>}

@@ -25,16 +25,16 @@ interface SheetTabsProps {
 
 export function SheetTabs({ active, onChange }: SheetTabsProps) {
   return (
-    <div className="flex overflow-x-auto border-b border-stone-700 bg-stone-900 scrollbar-hide">
+    <div className="flex overflow-x-auto border-b border-stone-800 bg-stone-950 scrollbar-hide px-1">
       {TABS.map(tab => (
         <button
           key={tab.id}
           onClick={() => onChange(tab.id)}
           className={clsx(
-            'shrink-0 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px',
+            'shrink-0 px-4 py-3 text-xs font-medium tracking-wide transition-all duration-150 border-b-2 -mb-px',
             active === tab.id
-              ? 'border-amber-500 text-amber-400'
-              : 'border-transparent text-stone-400 hover:text-stone-200 hover:border-stone-600',
+              ? 'border-amber-500 text-amber-400 bg-stone-800/40'
+              : 'border-transparent text-stone-500 hover:text-stone-300 hover:border-stone-600/50 hover:bg-stone-800/20',
           )}
         >
           {tab.label}

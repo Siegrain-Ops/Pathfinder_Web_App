@@ -11,14 +11,14 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<Variant, string> = {
-  primary:   'bg-amber-600 hover:bg-amber-500 text-white border-transparent',
-  secondary: 'bg-stone-700 hover:bg-stone-600 text-stone-100 border-stone-600',
-  ghost:     'bg-transparent hover:bg-stone-700 text-stone-300 border-transparent',
-  danger:    'bg-red-700 hover:bg-red-600 text-white border-transparent',
+  primary:   'bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white border-transparent shadow-sm shadow-amber-950/60',
+  secondary: 'bg-stone-700/80 hover:bg-stone-600 active:bg-stone-700 text-stone-100 border-stone-600/70',
+  ghost:     'bg-transparent hover:bg-stone-700/60 active:bg-stone-700/80 text-stone-300 border-transparent',
+  danger:    'bg-red-800/90 hover:bg-red-700 active:bg-red-900 text-white border-transparent',
 }
 
 const sizeClasses: Record<Size, string> = {
-  sm: 'px-3 py-1.5 text-sm',
+  sm: 'px-3 py-1.5 text-xs',
   md: 'px-4 py-2 text-sm',
   lg: 'px-6 py-2.5 text-base',
 }
@@ -30,8 +30,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled ?? loading}
         className={clsx(
-          'inline-flex items-center justify-center gap-2 rounded border font-medium',
-          'transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-amber-500/50',
+          'inline-flex items-center justify-center gap-2 rounded-md border font-medium',
+          'transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:ring-offset-1 focus:ring-offset-stone-900',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           variantClasses[variant],
           sizeClasses[size],

@@ -4,17 +4,25 @@
 
 @layer base {
   body {
-    @apply bg-stone-900 text-stone-100 font-body;
+    @apply bg-stone-950 text-stone-100 font-body antialiased;
   }
+
+  /* Refined scrollbars */
+  ::-webkit-scrollbar        { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track  { background: transparent; }
+  ::-webkit-scrollbar-thumb  { @apply rounded-full bg-stone-700; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-stone-600; }
 }
 
 @layer components {
   /* Shared input / select / textarea style used across all forms */
   .field {
-    @apply w-full rounded border border-stone-600 bg-stone-900
+    @apply w-full rounded-md border border-stone-600/80 bg-stone-900
            px-3 py-1.5 text-sm text-stone-100
            placeholder:text-stone-500
-           focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50
-           disabled:opacity-50 disabled:cursor-not-allowed;
+           transition-colors duration-150
+           hover:border-stone-500/80
+           focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50
+           disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-stone-600/80;
   }
 }

@@ -30,11 +30,12 @@ export function StatsSection() {
           return (
             <div
               key={stat}
-              className="flex flex-col items-center gap-2 rounded-lg border border-stone-700
-                         bg-stone-900 p-3"
+              className="flex flex-col items-center gap-2 rounded-xl border border-stone-700/60
+                         bg-stone-900/90 p-3 shadow-sm transition-colors duration-150
+                         hover:border-stone-600/80 hover:bg-stone-900"
             >
               {/* Abbr */}
-              <span className="text-xs font-bold text-stone-400 uppercase tracking-widest">
+              <span className="text-[11px] font-bold text-stone-400 uppercase tracking-[0.15em]">
                 {ABILITY_ABBR[stat]}
               </span>
 
@@ -42,10 +43,10 @@ export function StatsSection() {
               <ModifierBubble value={score.modifier} />
 
               {/* Total */}
-              <span className="text-lg font-bold text-stone-100">{score.total}</span>
+              <span className="text-lg font-bold text-stone-100 font-mono">{score.total}</span>
 
               {/* Divider */}
-              <div className="w-full h-px bg-stone-700" />
+              <div className="w-full h-px bg-stone-700/60" />
 
               {/* Editable breakdown */}
               <StatInput

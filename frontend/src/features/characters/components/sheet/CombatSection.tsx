@@ -92,9 +92,9 @@ export function CombatSection() {
 
 function DerivedStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex flex-col items-center gap-1 rounded border border-amber-700/30 bg-stone-900 py-2 px-3">
+    <div className="flex flex-col items-center gap-1 rounded-xl border border-amber-700/40 bg-stone-900/80 py-3 px-3 shadow-sm">
       <span className="text-2xl font-bold font-display text-amber-300">{value}</span>
-      <span className="text-[10px] uppercase tracking-wider text-stone-500">{label}</span>
+      <span className="text-[9px] uppercase tracking-[0.15em] text-stone-500">{label}</span>
     </div>
   )
 }
@@ -103,7 +103,7 @@ function StatWithLabel({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col items-center gap-1">
       <span className="text-xl font-bold font-mono text-stone-100">{value}</span>
-      <span className="text-[10px] uppercase tracking-wider text-stone-500">{label}</span>
+      <span className="text-[9px] uppercase tracking-[0.12em] text-stone-500">{label}</span>
     </div>
   )
 }

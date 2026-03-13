@@ -258,7 +258,7 @@ export function AbilitiesSection() {
                   </div>
                   <label className="flex flex-col gap-1">
                     <span className="text-xs text-stone-500">Description</span>
-                    <textarea className="field min-h-[70px] resize-y" value={ability.description} disabled={isLocked}
+                    <textarea className="field min-h-[120px] resize-y" value={ability.description} disabled={isLocked}
                       onChange={e => updateAbility(ability.id, { description: e.target.value })} />
                   </label>
                 </div>
