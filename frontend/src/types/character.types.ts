@@ -9,6 +9,7 @@ import type { Skill }           from './skill.types'
 import type { Inventory }       from './inventory.types'
 import type { SpellSection }    from './spell.types'
 import type { Feat, SpecialAbility } from './feat.types'
+import type { ActiveEffect }         from './effects.types'
 
 export type Alignment =
   | 'Lawful Good'    | 'Neutral Good'    | 'Chaotic Good'
@@ -62,6 +63,9 @@ export interface CharacterData {
   // ── Miscellaneous ────────────────────────────────────────
   languages:    string[]
   notes:        string
+
+  // ── Active Effects (buff/debuff/condition tracking) ───────
+  activeEffects?: ActiveEffect[]
 }
 
 /** Full persisted character record (includes DB metadata). */

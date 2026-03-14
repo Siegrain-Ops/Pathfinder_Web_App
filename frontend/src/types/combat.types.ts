@@ -42,6 +42,18 @@ export interface Combat {
   cmb: number
   /** Combat Maneuver Defense = 10 + BAB + STR mod + DEX mod + size mod */
   cmd: number
+  /** Free-text damage / crit note, e.g. "1d8+4 / 19–20 ×2" */
+  damageNote?: string
+  /** Free-text DR / resistances / immunities */
+  drNote?: string
+  /** Caster level override (defaults to character level if absent) */
+  casterLevel?: number
+  /** Misc bonus to Concentration checks */
+  concentrationMisc?: number
+  /** Misc bonus to spell save DC */
+  spellDcMisc?: number
+  /** Quick notes for spellcasting in combat */
+  spellcastingNotes?: string
 }
 
 export const defaultHitPoints = (): HitPoints => ({
