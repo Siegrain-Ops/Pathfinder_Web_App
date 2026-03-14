@@ -20,6 +20,14 @@ export type SizeCategory =
   | 'Fine' | 'Diminutive' | 'Tiny' | 'Small'
   | 'Medium' | 'Large' | 'Huge' | 'Gargantuan' | 'Colossal'
 
+/**
+ * Pathfinder 1e Favored Class Bonus choice.
+ * Each time the character gains a level in their favored class they get either
+ * +1 maximum HP or +1 skill rank.
+ * Stored as optional for backward-compatibility; absent = defaults to 'hp'.
+ */
+export type FavoredClassBonus = 'hp' | 'skill_rank'
+
 /** Full character sheet data (stored as JSON in the DB). */
 export interface CharacterData {
   // ── Identity ─────────────────────────────────────────────
@@ -63,6 +71,10 @@ export interface CharacterData {
   // ── Miscellaneous ────────────────────────────────────────
   languages:    string[]
   notes:        string
+
+  // ── Progression preference ────────────────────────────────
+  /** Favored class bonus chosen at creation; absent on older characters → treat as 'hp'. */
+  favoredClassBonus?: FavoredClassBonus
 
   // ── Active Effects (buff/debuff/condition tracking) ───────
   activeEffects?: ActiveEffect[]

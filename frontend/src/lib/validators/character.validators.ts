@@ -113,20 +113,21 @@ export const inventoryItemSchema = z.object({
 // ── Character — Identity ──────────────────────────────────────────────────
 
 export const characterIdentitySchema = z.object({
-  name:       z.string().min(1, 'Name is required').max(100),
-  playerName: z.string().max(100),
-  race:       z.string().min(1, 'Race is required').max(50),
-  className:  z.string().min(1, 'Class is required').max(50),
-  level:      z.number().int().min(1).max(20),
-  alignment:  z.enum(ALIGNMENTS as [string, ...string[]]),
-  background: z.string().max(100),
-  deity:      z.string().max(100),
-  size:       z.enum(SIZE_CATEGORIES as [string, ...string[]]),
-  age:        z.number().int().min(0),
-  gender:     z.string().max(50),
-  height:     z.string().max(20),
-  weight:     z.string().max(20),
-  homeland:   z.string().max(100),
+  name:               z.string().min(1, 'Name is required').max(100),
+  playerName:         z.string().max(100),
+  race:               z.string().min(1, 'Race is required').max(50),
+  className:          z.string().min(1, 'Class is required').max(50),
+  level:              z.number().int().min(1).max(20),
+  alignment:          z.enum(ALIGNMENTS as [string, ...string[]]),
+  background:         z.string().max(100),
+  deity:              z.string().max(100),
+  size:               z.enum(SIZE_CATEGORIES as [string, ...string[]]),
+  age:                z.number().int().min(0),
+  gender:             z.string().max(50),
+  height:             z.string().max(20),
+  weight:             z.string().max(20),
+  homeland:           z.string().max(100),
+  favoredClassBonus:  z.enum(['hp', 'skill_rank']).default('hp'),
 })
 
 export type CharacterIdentityFormValues = z.infer<typeof characterIdentitySchema>

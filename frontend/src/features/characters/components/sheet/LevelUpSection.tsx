@@ -72,6 +72,10 @@ export function LevelUpSection() {
   const rankBudget     = Math.max(1, (refClass?.skillRanks ?? 2) + intMod)
   const avgHpGain      = Math.max(1, rollAverage(hitDie) + conMod)
 
+  const favoredClassBonus = d.favoredClassBonus ?? 'hp'
+  const fcbHpBonus        = favoredClassBonus === 'hp' ? 1 : 0
+  const fcbRankBonus      = favoredClassBonus === 'skill_rank' ? 1 : 0
+
   const gainsFeat         = nextLevel % 2 === 1            // PF1: feats at odd levels
   const gainsAbilityScore = nextLevel % 4 === 0            // every 4 levels
   const isCaster          = !!(refClass?.spellcastingType)
@@ -110,13 +114,14 @@ export function LevelUpSection() {
   }
 
   function applyHp() {
+    const totalGain = avgHpGain + fcbHpBonus
     update({
       combat: {
         ...d.combat,
         hitPoints: {
           ...d.combat.hitPoints,
-          max:     d.combat.hitPoints.max     + avgHpGain,
-          current: d.combat.hitPoints.current + avgHpGain,
+          max:     d.combat.hitPoints.max     + totalGain,
+          current: d.combat.hitPoints.current + totalGain,
         },
       },
     })
@@ -179,6 +184,17 @@ export function LevelUpSection() {
               <span className="text-xs text-stone-500 uppercase tracking-wide">Race</span>
               <span className="font-semibold text-stone-200">{d.race || '—'}</span>
             </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-stone-500 uppercase tracking-wide">FCB</span>
+              <span className={clsx(
+                'text-xs font-semibold px-2 py-0.5 rounded-full border',
+                favoredClassBonus === 'hp'
+                  ? 'border-amber-600/50 bg-amber-950/30 text-amber-300'
+                  : 'border-emerald-600/50 bg-emerald-950/30 text-emerald-300',
+              )}>
+                {favoredClassBonus === 'hp' ? '+1 HP / lvl' : '+1 Rank / lvl'}
+              </span>
+            </div>
             {isLoading && (
               <span className="text-xs text-stone-500 italic">Loading class data…</span>
             )}
@@ -232,6 +248,7 @@ export function LevelUpSection() {
                   hitDie={hitDie}
                   conMod={conMod}
                   avgGain={avgHpGain}
+                  fcbBonus={fcbHpBonus}
                   currentMax={d.combat.hitPoints.max}
                   applied={hpApplied}
                   onApply={applyHp}
@@ -256,6 +273,7 @@ export function LevelUpSection() {
               {step === 'skills' && (
                 <SkillsStep
                   rankBudget={rankBudget}
+                  fcbBonus={fcbRankBonus}
                   skillRanksBase={refClass?.skillRanks ?? null}
                   intMod={intMod}
                   classSkills={refClass?.classSkills?.map(s => s.name) ?? null}
@@ -400,42 +418,48 @@ function ConfirmStep({
 }
 
 function HpStep({
-  hitDie, conMod, avgGain, currentMax, applied, onApply,
+  hitDie, conMod, avgGain, fcbBonus, currentMax, applied, onApply,
 }: {
   hitDie: number
   conMod: number
   avgGain: number
+  fcbBonus: number
   currentMax: number
   applied: boolean
   onApply: () => void
 }) {
-  const formula = `d${hitDie} ${conMod >= 0 ? '+' : ''}${conMod} CON`
-  const avg     = rollAverage(hitDie)
+  const formula   = `d${hitDie} ${conMod >= 0 ? '+' : ''}${conMod} CON`
+  const avg       = rollAverage(hitDie)
+  const totalGain = avgGain + fcbBonus
 
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-stone-400">
         Roll <strong className="text-stone-200">{formula}</strong> (minimum 1) and add to your maximum HP.
         Average result: <strong className="text-amber-400">{avg} + {conMod} = {avgGain}</strong>.
+        {fcbBonus > 0 && (
+          <> Plus <strong className="text-amber-300">+{fcbBonus} Favored Class Bonus</strong>.</>
+        )}
       </p>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         <InfoChip label="Hit Die"  value={`d${hitDie}`} />
         <InfoChip label="CON Mod"  value={formatMod(conMod)} />
-        <InfoChip label="Avg Gain" value={`+${avgGain}`} accent />
+        {fcbBonus > 0 && <InfoChip label="FCB" value={`+${fcbBonus}`} fcb />}
+        <InfoChip label="Avg Gain" value={`+${totalGain}`} accent />
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
         <span className="text-xs text-stone-500">Current Max HP: {currentMax}</span>
         <span className="text-xs text-stone-500">→</span>
-        <span className="text-xs text-stone-300 font-mono">{currentMax + avgGain} (after avg)</span>
+        <span className="text-xs text-stone-300 font-mono">{currentMax + totalGain} (after avg{fcbBonus > 0 ? ' + FCB' : ''})</span>
       </div>
 
       {applied ? (
-        <p className="text-xs text-emerald-500/80 italic">✓ Average HP ({avgGain}) applied to Max & Current HP.</p>
+        <p className="text-xs text-emerald-500/80 italic">✓ HP (+{totalGain}{fcbBonus > 0 ? `, including +${fcbBonus} FCB` : ''}) applied to Max & Current HP.</p>
       ) : (
         <div className="flex gap-2 flex-wrap">
-          <Button size="sm" onClick={onApply}>Apply avg HP (+{avgGain})</Button>
+          <Button size="sm" onClick={onApply}>Apply avg HP (+{totalGain})</Button>
           <span className="text-xs text-stone-500 self-center">or roll manually and update the Combat tab</span>
         </div>
       )}
@@ -515,27 +539,34 @@ function BabSavesStep({
 }
 
 function SkillsStep({
-  rankBudget, skillRanksBase, intMod, classSkills,
+  rankBudget, fcbBonus, skillRanksBase, intMod, classSkills,
 }: {
   rankBudget: number
+  fcbBonus: number
   skillRanksBase: number | null
   intMod: number
   classSkills: string[] | null
 }) {
+  const totalBudget = rankBudget + fcbBonus
+
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-stone-400">
-        You earn <strong className="text-amber-400">{rankBudget} skill rank{rankBudget !== 1 ? 's' : ''}</strong> this level
+        You earn <strong className="text-amber-400">{totalBudget} skill rank{totalBudget !== 1 ? 's' : ''}</strong> this level
         {skillRanksBase !== null && (
-          <> ({skillRanksBase} class + {formatMod(intMod)} INT, min 1)</>
+          <> ({skillRanksBase} class + {formatMod(intMod)} INT, min 1{fcbBonus > 0 ? `, +${fcbBonus} FCB` : ''})</>
         )}.
-        Open the <strong className="text-stone-300">Skills</strong> tab to distribute them.
+        {fcbBonus > 0 && (
+          <> Includes <strong className="text-amber-300">+{fcbBonus} Favored Class Bonus</strong>.</>
+        )}
+        {' '}Open the <strong className="text-stone-300">Skills</strong> tab to distribute them.
       </p>
 
       <div className="grid grid-cols-2 gap-3">
         {skillRanksBase !== null && <InfoChip label="Class ranks/lvl" value={String(skillRanksBase)} />}
         <InfoChip label="INT modifier"  value={formatMod(intMod)} />
-        <InfoChip label="Total budget"  value={`+${rankBudget}`} accent />
+        {fcbBonus > 0 && <InfoChip label="FCB" value={`+${fcbBonus}`} fcb />}
+        <InfoChip label="Total budget"  value={`+${totalBudget}`} accent />
       </div>
 
       {classSkills && classSkills.length > 0 && (
@@ -703,14 +734,22 @@ function LvlBadge({ current, next }: { current: number; next: number }) {
 }
 
 function InfoChip({
-  label, value, accent = false,
-}: { label: string; value: string; accent?: boolean }) {
+  label, value, accent = false, fcb = false,
+}: { label: string; value: string; accent?: boolean; fcb?: boolean }) {
   return (
-    <div className="flex flex-col items-center rounded-lg border border-stone-700/60 bg-stone-900/80 px-3 py-2">
-      <span className="text-[10px] uppercase tracking-wide text-stone-500">{label}</span>
+    <div className={clsx(
+      'flex flex-col items-center rounded-lg border px-3 py-2',
+      fcb
+        ? 'border-amber-700/50 bg-amber-950/20'
+        : 'border-stone-700/60 bg-stone-900/80',
+    )}>
+      <span className={clsx(
+        'text-[10px] uppercase tracking-wide',
+        fcb ? 'text-amber-600' : 'text-stone-500',
+      )}>{label}</span>
       <span className={clsx(
         'text-base font-bold font-mono',
-        accent ? 'text-amber-300' : 'text-stone-200',
+        fcb ? 'text-amber-300' : accent ? 'text-amber-300' : 'text-stone-200',
       )}>
         {value}
       </span>

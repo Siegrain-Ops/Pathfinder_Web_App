@@ -1,8 +1,10 @@
 import { useState }          from 'react'
+import { clsx }              from 'clsx'
 import { SectionPanel }      from './SectionPanel'
 import { Button }            from '@/components/ui/Button'
 import { useCharacterSheet } from '../../hooks/useCharacterSheet'
 import { useReferenceClasses } from '../../hooks/useReferenceClasses'
+import type { FavoredClassBonus } from '@/types'
 import { useReferenceRaces } from '../../hooks/useReferenceRaces'
 import { ALIGNMENTS, COMMON_CLASSES, COMMON_RACES, SIZE_CATEGORIES } from '@/lib/constants'
 
@@ -186,6 +188,51 @@ export function OverviewSection() {
                 placeholder="Common, Elvish, …"
               />
             </FormField>
+          </div>
+
+          {/* Favored Class Bonus */}
+          <div className="flex flex-col gap-2 pt-1">
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-stone-500 whitespace-nowrap">
+                Favored Class Bonus
+              </span>
+              <div className="flex-1 h-px bg-stone-700/50" />
+            </div>
+            <p className="text-[10px] text-stone-600">
+              Bonus applied at each level-up. Used by the <strong className="text-stone-500">LvL UP</strong> workflow.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {(['hp', 'skill_rank'] as const).map((choice: FavoredClassBonus) => {
+                const isActive = (data.favoredClassBonus ?? 'hp') === choice
+                return (
+                  <button
+                    key={choice}
+                    type="button"
+                    disabled={isLocked}
+                    onClick={() => update({ favoredClassBonus: choice })}
+                    className={clsx(
+                      'flex flex-col gap-1 rounded-lg border px-3 py-2.5 text-left transition-colors duration-150',
+                      'disabled:cursor-not-allowed disabled:opacity-40',
+                      isActive
+                        ? 'border-amber-600/60 bg-amber-950/20'
+                        : 'border-stone-700/50 hover:border-stone-600/60 hover:bg-stone-800/30',
+                    )}
+                  >
+                    <span className={clsx(
+                      'text-xs font-semibold',
+                      isActive ? 'text-amber-300' : 'text-stone-400',
+                    )}>
+                      {choice === 'hp' ? '+1 HP / level' : '+1 Skill Rank / level'}
+                    </span>
+                    <span className="text-[10px] text-stone-500 leading-snug">
+                      {choice === 'hp'
+                        ? 'Extra hit point each favored-class level'
+                        : 'Extra skill rank each favored-class level'}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
 

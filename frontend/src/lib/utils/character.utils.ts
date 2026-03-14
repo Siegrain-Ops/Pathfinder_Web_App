@@ -50,6 +50,8 @@ export function createBlankCharacter(): CharacterData {
     nextLevelXp: 2000,
     languages:   ['Common'],
     notes:       '',
+
+    favoredClassBonus: 'hp',
   }
 
   return recomputeCharacter(raw)
