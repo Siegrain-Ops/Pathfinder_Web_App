@@ -1,4 +1,4 @@
-import { useState, useMemo }     from 'react'
+import { useState, useMemo } from 'react'
 import { SectionPanel }          from './SectionPanel'
 import { Button }                from '@/components/ui/Button'
 import { useCharacterSheet }     from '../../hooks/useCharacterSheet'
@@ -22,6 +22,10 @@ function rollAverage(die: number) {
   return Math.floor(die / 2) + 1
 }
 
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
 type StepId =
   | 'confirm'
   | 'hp'
@@ -41,21 +45,24 @@ const ALL_STEPS: StepId[] = [
 // ---------------------------------------------------------------------------
 
 export function LevelUpSection() {
-  const { data, update }       = useCharacterSheet()
+  const { data, update, save } = useCharacterSheet()
   const { classes, isLoading } = useReferenceClasses()
 
-  const [done, setDone]           = useState<Set<StepId>>(new Set())
-  const [expanded, setExpanded]   = useState<StepId | null>('confirm')
-  const [hpApplied, setHpApplied] = useState(false)
-  const [babApplied, setBabApplied] = useState(false)
-  const [savesApplied, setSavesApplied] = useState(false)
+  const [done, setDone]                               = useState<Set<StepId>>(new Set())
+  const [expanded, setExpanded]                       = useState<StepId | null>('confirm')
+  const [hpApplied, setHpApplied]                     = useState(false)
+  const [babApplied, setBabApplied]                   = useState(false)
+  const [savesApplied, setSavesApplied]               = useState(false)
+  const [currentLevelAtStart, setCurrentLevelAtStart] = useState<number | null>(null)
 
   if (!data) return null
 
   // Capture narrowed non-null reference so closures can access it safely
   const d = data
 
-  const currentLevel = d.level
+  // Use the frozen level (set when workflow began) so nextLevel stays stable
+  // even after applyLevelUp increments data.level.
+  const currentLevel = currentLevelAtStart ?? d.level
   const nextLevel    = currentLevel + 1
 
   // Match reference class by name (case-insensitive)
@@ -76,8 +83,8 @@ export function LevelUpSection() {
   const fcbHpBonus        = favoredClassBonus === 'hp' ? 1 : 0
   const fcbRankBonus      = favoredClassBonus === 'skill_rank' ? 1 : 0
 
-  const gainsFeat         = nextLevel % 2 === 1            // PF1: feats at odd levels
-  const gainsAbilityScore = nextLevel % 4 === 0            // every 4 levels
+  const gainsFeat         = nextLevel % 2 === 1
+  const gainsAbilityScore = nextLevel % 4 === 0
   const isCaster          = !!(refClass?.spellcastingType)
 
   const newFeatures = refClass?.classFeatures?.filter(f => f.level === nextLevel) ?? []
@@ -97,20 +104,36 @@ export function LevelUpSection() {
     return true
   })
 
-  const allDone = activeSteps.every(s => done.has(s))
-
-  // ── Helpers ──────────────────────────────────────────────────────────────
+  // ── Action helpers ────────────────────────────────────────────────────────
 
   function markDone(step: StepId) {
-    setDone(prev => new Set([...prev, step]))
+    const newDone = new Set([...done, step])
+    setDone(newDone)
     // Auto-advance to next undone step
     const idx  = activeSteps.indexOf(step)
     const next = activeSteps.slice(idx + 1).find(s => !done.has(s))
     setExpanded(next ?? null)
+    // When all steps are done: save and reset the workflow for the next level
+    if (activeSteps.every(s => newDone.has(s))) {
+      save().then(() => {
+        setDone(new Set())
+        setExpanded('confirm')
+        setHpApplied(false)
+        setBabApplied(false)
+        setSavesApplied(false)
+        setCurrentLevelAtStart(null)
+      })
+    }
   }
 
   function toggleExpand(step: StepId) {
     setExpanded(prev => prev === step ? null : step)
+  }
+
+  function applyLevelUp() {
+    setCurrentLevelAtStart(d.level)  // freeze the current level for this session
+    update({ level: d.level + 1 })
+    markDone('confirm')
   }
 
   function applyHp() {
@@ -144,19 +167,6 @@ export function LevelUpSection() {
       },
     })
     setSavesApplied(true)
-  }
-
-  function applyLevelUp() {
-    update({ level: nextLevel })
-    markDone('confirm')
-  }
-
-  function resetWorkflow() {
-    setDone(new Set())
-    setExpanded('confirm')
-    setHpApplied(false)
-    setBabApplied(false)
-    setSavesApplied(false)
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -205,23 +215,6 @@ export function LevelUpSection() {
             )}
           </div>
         </div>
-
-        {/* ── All done banner ─────────────────────────────────────────── */}
-        {allDone && (
-          <div className="rounded-xl border border-emerald-700/50 bg-emerald-950/30 px-5 py-4 flex items-center justify-between gap-4">
-            <div>
-              <p className="font-semibold text-emerald-400">
-                Level {nextLevel} complete!
-              </p>
-              <p className="text-xs text-stone-400 mt-0.5">
-                All steps checked off. Remember to save your character.
-              </p>
-            </div>
-            <Button variant="ghost" size="sm" onClick={resetWorkflow} className="text-stone-400">
-              Reset
-            </Button>
-          </div>
-        )}
 
         {/* ── Step list ───────────────────────────────────────────────── */}
         <div className="flex flex-col gap-2">
@@ -720,13 +713,13 @@ function SpellsStep({
 function LvlBadge({ current, next }: { current: number; next: number }) {
   return (
     <div className="flex items-center gap-2 shrink-0">
-      <div className="rounded-lg border border-stone-700/60 bg-stone-900 px-3 py-2 text-center min-w-[52px]">
-        <span className="text-xs text-stone-500 block uppercase tracking-wide">Lvl</span>
+      <div className="rounded-lg border border-stone-700/60 bg-stone-900 px-3 py-2 text-center min-w-[56px]">
+        <span className="text-[10px] text-stone-500 block uppercase tracking-wide">Current Lv.</span>
         <span className="text-2xl font-bold font-display text-stone-300">{current}</span>
       </div>
       <span className="text-stone-600 text-lg">→</span>
-      <div className="rounded-lg border border-emerald-700/60 bg-emerald-950/30 px-3 py-2 text-center min-w-[52px]">
-        <span className="text-xs text-emerald-600 block uppercase tracking-wide">Next</span>
+      <div className="rounded-lg border border-emerald-700/60 bg-emerald-950/30 px-3 py-2 text-center min-w-[56px]">
+        <span className="text-[10px] text-emerald-600 block uppercase tracking-wide">Leveling to</span>
         <span className="text-2xl font-bold font-display text-emerald-400">{next}</span>
       </div>
     </div>
@@ -739,9 +732,7 @@ function InfoChip({
   return (
     <div className={clsx(
       'flex flex-col items-center rounded-lg border px-3 py-2',
-      fcb
-        ? 'border-amber-700/50 bg-amber-950/20'
-        : 'border-stone-700/60 bg-stone-900/80',
+      fcb ? 'border-amber-700/50 bg-amber-950/20' : 'border-stone-700/60 bg-stone-900/80',
     )}>
       <span className={clsx(
         'text-[10px] uppercase tracking-wide',
@@ -749,7 +740,7 @@ function InfoChip({
       )}>{label}</span>
       <span className={clsx(
         'text-base font-bold font-mono',
-        fcb ? 'text-amber-300' : accent ? 'text-amber-300' : 'text-stone-200',
+        fcb || accent ? 'text-amber-300' : 'text-stone-200',
       )}>
         {value}
       </span>

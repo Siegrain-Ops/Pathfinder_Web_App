@@ -49,10 +49,16 @@ export function AbilitiesSection() {
       try {
         setIsSearching(true)
         setSearchError(null)
+        const co = characterData.classOptions ?? {}
         const results = await referenceAbilityService.search({
-          q: query,
-          className: characterData.className,
-          limit: 16,
+          q:             query,
+          className:     characterData.className,
+          race:          characterData.race,
+          bloodlineName: co.bloodlineName   ?? undefined,
+          mysteryName:   co.mysteryName     ?? undefined,
+          domainName:    co.domainNames?.[0] ?? undefined,
+          archetypeName: co.archetypeName   ?? undefined,
+          limit: 20,
         })
         setSearchResults(results)
       } catch (error) {
@@ -64,7 +70,15 @@ export function AbilitiesSection() {
     }, 250)
 
     return () => window.clearTimeout(timeoutId)
-  }, [characterData.className, searchTerm])
+  }, [
+    characterData.className,
+    characterData.race,
+    characterData.classOptions?.bloodlineName,
+    characterData.classOptions?.mysteryName,
+    characterData.classOptions?.domainNames,
+    characterData.classOptions?.archetypeName,
+    searchTerm,
+  ])
 
   function addAbility() {
     const ability = defaultAbility(crypto.randomUUID())

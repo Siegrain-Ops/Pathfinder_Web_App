@@ -7,8 +7,12 @@ import { referenceSpellRoutes } from './modules/reference/spells/routes'
 import { referenceFeatRoutes }  from './modules/reference/feats/routes'
 import { referenceRaceRoutes }  from './modules/reference/races/routes'
 import { referenceClassRoutes } from './modules/reference/classes/routes'
-import { referenceAbilityRoutes } from './modules/reference/abilities/routes'
-import { errorHandler }         from './common/middleware/errorHandler'
+import { referenceAbilityRoutes }    from './modules/reference/abilities/routes'
+import { referenceArchetypeRoutes }  from './modules/reference/archetypes/routes'
+import { referenceBloodlineRoutes }  from './modules/reference/bloodlines/routes'
+import { referenceDomainRoutes }     from './modules/reference/domains/routes'
+import { referenceMysteryRoutes }    from './modules/reference/mysteries/routes'
+import { errorHandler }              from './common/middleware/errorHandler'
 
 dotenv.config()
 
@@ -33,7 +37,11 @@ app.use('/api/reference/spells', referenceSpellRoutes)
 app.use('/api/reference/feats',  referenceFeatRoutes)
 app.use('/api/reference/races',  referenceRaceRoutes)
 app.use('/api/reference/classes', referenceClassRoutes)
-app.use('/api/reference/abilities', referenceAbilityRoutes)
+app.use('/api/reference/abilities',  referenceAbilityRoutes)
+app.use('/api/reference/archetypes', referenceArchetypeRoutes)
+app.use('/api/reference/bloodlines', referenceBloodlineRoutes)
+app.use('/api/reference/domains',    referenceDomainRoutes)
+app.use('/api/reference/mysteries',  referenceMysteryRoutes)
 
 // ── 404 for unknown routes ─────────────────────────────────────────────────
 app.use((_req, res) => {

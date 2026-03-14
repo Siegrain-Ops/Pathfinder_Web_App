@@ -89,6 +89,68 @@ export interface ReferenceFeat {
   updatedAt: string
 }
 
+export interface ReferenceArchetype {
+  id:               string
+  name:             string
+  className:        string | null
+  classId:          string | null
+  description:      string | null
+  replacedFeatures: Array<{ level?: number; name: string }> | null
+  gainedFeatures:   Array<{ level?: number; name: string; description?: string }> | null
+  sourceName:       string | null
+  sourceUrl:        string | null
+  edition:          string
+  createdAt:        string
+  updatedAt:        string
+}
+
+export interface ReferenceBloodline {
+  id:          string
+  name:        string
+  className:   string | null
+  description: string | null
+  arcanaText:  string | null
+  powers:      Array<{ level?: number; name: string; abilityType?: string; description?: string }> | null
+  bonusSpells: Array<{ level: number; spellName: string }> | null
+  bonusFeats:  string[] | null
+  sourceName:  string | null
+  sourceUrl:   string | null
+  edition:     string
+  createdAt:   string
+  updatedAt:   string
+}
+
+export interface ReferenceDomain {
+  id:               string
+  name:             string
+  parentDomainName: string | null
+  className:        string | null
+  description:      string | null
+  grantedPowers:    Array<{ level?: number; name: string; abilityType?: string; description?: string }> | null
+  domainSpells:     Array<{ level: number; spellName: string }> | null
+  sourceName:       string | null
+  sourceUrl:        string | null
+  edition:          string
+  createdAt:        string
+  updatedAt:        string
+}
+
+export interface ReferenceMystery {
+  id:               string
+  name:             string
+  className:        string | null
+  description:      string | null
+  classSkills:      Array<{ name: string; stat?: string }> | null
+  bonusSpells:      Array<{ level: number; spellName: string }> | null
+  revelations:      Array<{ name: string; levelRequirement?: number; description?: string }> | null
+  finalRevelation:  string | null
+  sourceName:       string | null
+  sourceUrl:        string | null
+  edition:          string
+  createdAt:        string
+  updatedAt:        string
+}
+
 export interface ReferenceAbilityResult {
   id: string
   name: string

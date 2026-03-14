@@ -6,16 +6,42 @@ import type {
 
 export const referenceAbilityRepository = {
   async search(params: AbilitySearchParams): Promise<ReferenceAbilityResult[]> {
-    const { q, kind, className, category, limit = 30, offset = 0 } = params
+    const {
+      q, kind, className, category,
+      race, bloodlineName, mysteryName, domainName, archetypeName,
+      limit = 30, offset = 0,
+    } = params
+
+    // Build OR filters for contextual matching on ReferenceAbility
+    // Each non-null option adds a sourceOptionName filter so abilities from
+    // that bloodline/mystery/domain/archetype surface alongside class abilities.
+    const optionFilters = [
+      bloodlineName ? { sourceOptionName: { contains: bloodlineName } } : undefined,
+      mysteryName   ? { sourceOptionName: { contains: mysteryName   } } : undefined,
+      domainName    ? { sourceOptionName: { contains: domainName    } } : undefined,
+      archetypeName ? { sourceOptionName: { contains: archetypeName } } : undefined,
+    ].filter((f): f is NonNullable<typeof f> => f !== undefined)
+
+    const classFilters = className
+      ? [{ sourceParentName: { contains: className } }, ...optionFilters]
+      : optionFilters
+
+    // Include racial abilities when race is provided (without double-counting
+    // when className is also set — race abilities are always included as extra)
+    const raceFilters = race
+      ? [{ AND: [{ sourceCategory: { equals: 'race' } }, { sourceParentName: { contains: race } }] }]
+      : []
+
+    const orFilters = [...classFilters, ...raceFilters]
 
     const [abilities, talents] = await Promise.all([
       kind === 'talent'
         ? Promise.resolve([])
         : prisma.referenceAbility.findMany({
             where: {
-              ...(q ? { name: { contains: q } } : {}),
-              ...(className ? { sourceParentName: { contains: className } } : {}),
-              ...(category ? { sourceCategory: { equals: category } } : {}),
+              ...(q              ? { name:          { contains: q        } } : {}),
+              ...(category       ? { sourceCategory: { equals:   category } } : {}),
+              ...(orFilters.length > 0 ? { OR: orFilters } : {}),
             },
             orderBy: { name: 'asc' },
             take: limit,
@@ -25,9 +51,9 @@ export const referenceAbilityRepository = {
         ? Promise.resolve([])
         : prisma.referenceTalent.findMany({
             where: {
-              ...(q ? { name: { contains: q } } : {}),
+              ...(q         ? { name:      { contains: q         } } : {}),
               ...(className ? { className: { contains: className } } : {}),
-              ...(category ? { talentFamily: { contains: category } } : {}),
+              ...(category  ? { talentFamily: { contains: category  } } : {}),
             },
             orderBy: { name: 'asc' },
             take: limit,

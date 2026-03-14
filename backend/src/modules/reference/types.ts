@@ -6,6 +6,12 @@ import type { ReferenceSpell as PrismaSpell, ReferenceFeat as PrismaFeat } from 
 import type { ReferenceRace as PrismaRace } from '@prisma/client'
 import type { ReferenceClass as PrismaClass } from '@prisma/client'
 import type { ReferenceAbility as PrismaAbility, ReferenceTalent as PrismaTalent } from '@prisma/client'
+import type {
+  ReferenceArchetype as PrismaArchetype,
+  ReferenceBloodline as PrismaBloodline,
+  ReferenceDomain as PrismaDomain,
+  ReferenceMystery as PrismaMystery,
+} from '@prisma/client'
 
 // ── Reference Spell ─────────────────────────────────────────────────────────
 
@@ -64,12 +70,17 @@ export interface ClassSearchParams {
 }
 
 export interface AbilitySearchParams {
-  q?: string
-  kind?: 'ability' | 'talent'
-  className?: string
-  category?: string
-  limit?: number
-  offset?: number
+  q?:             string
+  kind?:          'ability' | 'talent'
+  className?:     string
+  category?:      string
+  race?:          string
+  bloodlineName?: string
+  mysteryName?:   string
+  domainName?:    string
+  archetypeName?: string
+  limit?:         number
+  offset?:        number
 }
 
 export interface FeatSearchParams {
@@ -78,6 +89,41 @@ export interface FeatSearchParams {
   limit?: number
   offset?: number
 }
+
+export interface ArchetypeSearchParams {
+  q?:        string
+  className?: string
+  limit?:    number
+  offset?:   number
+}
+
+export interface BloodlineSearchParams {
+  q?:        string
+  className?: string
+  limit?:    number
+  offset?:   number
+}
+
+export interface DomainSearchParams {
+  q?:        string
+  className?: string
+  limit?:    number
+  offset?:   number
+}
+
+export interface MysterySearchParams {
+  q?:        string
+  className?: string
+  limit?:    number
+  offset?:   number
+}
+
+// ── Reference type aliases ───────────────────────────────────────────────────
+
+export type ReferenceArchetype = PrismaArchetype
+export type ReferenceBloodline = PrismaBloodline
+export type ReferenceDomain    = PrismaDomain
+export type ReferenceMystery   = PrismaMystery
 
 // ── Character junction types ─────────────────────────────────────────────────
 

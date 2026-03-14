@@ -1,6 +1,7 @@
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver }        from '@hookform/resolvers/zod'
 import { useNavigate }        from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { Modal }              from '@/components/ui/Modal'
 import { Button }             from '@/components/ui/Button'
 import {
@@ -11,9 +12,29 @@ import { ALIGNMENTS, COMMON_CLASSES, COMMON_RACES } from '@/lib/constants'
 import { useCharacterStore }   from '@/app/store/characterStore'
 import { recomputeCharacter }  from '@/lib/formulas/character.formulas'
 import { createBlankCharacter } from '@/lib/utils/character.utils'
-import type { Alignment, SizeCategory } from '@/types'
-import { useReferenceRaces } from '../hooks/useReferenceRaces'
-import { useReferenceClasses } from '../hooks/useReferenceClasses'
+import type { Alignment, ClassOptions, SizeCategory } from '@/types'
+import { useReferenceRaces }    from '../hooks/useReferenceRaces'
+import { useReferenceClasses }  from '../hooks/useReferenceClasses'
+import { useReferenceArchetypes } from '../hooks/useReferenceArchetypes'
+import { useReferenceBloodlines } from '../hooks/useReferenceBloodlines'
+import { useReferenceDomains }    from '../hooks/useReferenceDomains'
+import { useReferenceMysteries }  from '../hooks/useReferenceMysteries'
+
+// ── Class-option feature detection ──────────────────────────────────────────
+
+const BLOODLINE_CLASSES  = ['sorcerer', 'bloodrager']
+const DOMAIN_CLASSES     = ['cleric', 'druid', 'inquisitor']
+const MYSTERY_CLASSES    = ['oracle']
+/** Clerics pick 2 domains; others pick 1 */
+const TWO_DOMAIN_CLASSES = ['cleric']
+
+function classKey(name: string) { return name.toLowerCase() }
+function hasBloodline(cls: string)  { return BLOODLINE_CLASSES.includes(classKey(cls)) }
+function hasDomains(cls: string)    { return DOMAIN_CLASSES.includes(classKey(cls)) }
+function hasMystery(cls: string)    { return MYSTERY_CLASSES.includes(classKey(cls)) }
+function domainCount(cls: string)   { return TWO_DOMAIN_CLASSES.includes(classKey(cls)) ? 2 : 1 }
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 interface CreateCharacterModalProps {
   open:    boolean
@@ -22,10 +43,10 @@ interface CreateCharacterModalProps {
 
 export function CreateCharacterModal({ open, onClose }: CreateCharacterModalProps) {
   const navigate = useNavigate()
-  const { races, isLoading: racesLoading } = useReferenceRaces()
+  const { races,   isLoading: racesLoading   } = useReferenceRaces()
   const { classes, isLoading: classesLoading } = useReferenceClasses()
-  const raceOptions = races.length > 0 ? races.map(race => race.name) : COMMON_RACES
-  const classOptions = classes.length > 0 ? classes.map(classRecord => classRecord.name) : COMMON_CLASSES
+  const raceOptions  = races.length   > 0 ? races.map(r => r.name)   : COMMON_RACES
+  const classOptions = classes.length > 0 ? classes.map(c => c.name) : COMMON_CLASSES
 
   const {
     register,
@@ -55,19 +76,59 @@ export function CreateCharacterModal({ open, onClose }: CreateCharacterModalProp
   })
 
   const favoredClassBonus = useWatch({ control, name: 'favoredClassBonus' })
+  const selectedClassName = useWatch({ control, name: 'className' })
+
+  // Class-option hooks — each guards against empty className internally
+  const { archetypes, isLoading: archetypesLoading } = useReferenceArchetypes(selectedClassName)
+  const { bloodlines, isLoading: bloodlinesLoading } = useReferenceBloodlines(
+    hasBloodline(selectedClassName) ? selectedClassName : '',
+  )
+  const { domains, isLoading: domainsLoading } = useReferenceDomains(
+    hasDomains(selectedClassName) ? selectedClassName : '',
+  )
+  const { mysteries, isLoading: mysteriesLoading } = useReferenceMysteries(
+    hasMystery(selectedClassName) ? selectedClassName : '',
+  )
+
+  // Selected class options — managed outside react-hook-form to keep schema clean
+  const [selClassOptions, setSelClassOptions] = useState<ClassOptions>({})
+
+  // Reset class options whenever the class changes
+  useEffect(() => {
+    setSelClassOptions({})
+  }, [selectedClassName])
+
+  const showBloodline  = hasBloodline(selectedClassName)  && bloodlines.length  > 0
+  const showDomains    = hasDomains(selectedClassName)    && domains.length     > 0
+  const showMystery    = hasMystery(selectedClassName)    && mysteries.length   > 0
+  const showArchetypes = archetypes.length > 0
+  const showSection    = showBloodline || showDomains || showMystery || showArchetypes
+
+  const nDomains = domainCount(selectedClassName)
+
+  function setDomain(slot: 0 | 1, id: string, name: string) {
+    setSelClassOptions(prev => {
+      const ids   = [...(prev.domainIds   ?? [])]
+      const names = [...(prev.domainNames ?? [])]
+      ids[slot]   = id
+      names[slot] = name
+      return { ...prev, domainIds: ids.filter(Boolean), domainNames: names.filter(Boolean) }
+    })
+  }
 
   const onSubmit = async (values: CharacterIdentityFormValues) => {
     const blank = createBlankCharacter()
     const data  = recomputeCharacter({
       ...blank,
       ...values,
-      // Zod validates these but types as string; cast to the narrower union types
-      alignment: values.alignment as Alignment,
-      size:      values.size as SizeCategory,
+      alignment:    values.alignment as Alignment,
+      size:         values.size as SizeCategory,
+      classOptions: selClassOptions,
     })
-    const referenceRaceId = races.find(race => race.name === values.race)?.id ?? null
+    const referenceRaceId = races.find(r => r.name === values.race)?.id ?? null
     const character = await useCharacterStore.getState().createCharacterWithData(data, referenceRaceId)
     reset()
+    setSelClassOptions({})
     onClose()
     navigate(`/characters/${character.id}`)
   }
@@ -88,21 +149,13 @@ export function CreateCharacterModal({ open, onClose }: CreateCharacterModalProp
         {/* Row: Race + Class + Level */}
         <div className="grid grid-cols-3 gap-3">
           <Field label="Race *" error={errors.race?.message}>
-            <select
-              className="field"
-              {...register('race')}
-              disabled={racesLoading}
-            >
-              {raceOptions.map(raceName => <option key={raceName} value={raceName}>{raceName}</option>)}
+            <select className="field" {...register('race')} disabled={racesLoading}>
+              {raceOptions.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </Field>
           <Field label="Class *" error={errors.className?.message}>
-            <select
-              className="field"
-              {...register('className')}
-              disabled={classesLoading}
-            >
-              {classOptions.map(className => <option key={className} value={className}>{className}</option>)}
+            <select className="field" {...register('className')} disabled={classesLoading}>
+              {classOptions.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           </Field>
           <Field label="Level" error={errors.level?.message}>
@@ -116,6 +169,100 @@ export function CreateCharacterModal({ open, onClose }: CreateCharacterModalProp
             {ALIGNMENTS.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
         </Field>
+
+        {/* ── Class Options (conditional) ──────────────────────────────── */}
+        {showSection && (
+          <div className="flex flex-col gap-3 rounded-lg border border-stone-700/60 bg-stone-900/40 px-3 py-3">
+            <span className="text-xs font-semibold uppercase tracking-widest text-stone-500">
+              Class Options
+            </span>
+
+            {/* Archetype */}
+            {showArchetypes && (
+              <Field label="Archetype (optional)">
+                <select
+                  className="field"
+                  disabled={archetypesLoading}
+                  value={selClassOptions.archetypeId ?? ''}
+                  onChange={e => {
+                    const arch = archetypes.find(a => a.id === e.target.value) ?? null
+                    setSelClassOptions(prev => ({
+                      ...prev,
+                      archetypeId:   arch?.id   ?? null,
+                      archetypeName: arch?.name ?? null,
+                    }))
+                  }}
+                >
+                  <option value="">— None / Base Class —</option>
+                  {archetypes.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </Field>
+            )}
+
+            {/* Bloodline */}
+            {showBloodline && (
+              <Field label="Bloodline *">
+                <select
+                  className="field"
+                  disabled={bloodlinesLoading}
+                  value={selClassOptions.bloodlineId ?? ''}
+                  onChange={e => {
+                    const bl = bloodlines.find(b => b.id === e.target.value) ?? null
+                    setSelClassOptions(prev => ({
+                      ...prev,
+                      bloodlineId:   bl?.id   ?? null,
+                      bloodlineName: bl?.name ?? null,
+                    }))
+                  }}
+                >
+                  <option value="">— Select a bloodline —</option>
+                  {bloodlines.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </Field>
+            )}
+
+            {/* Mystery */}
+            {showMystery && (
+              <Field label="Mystery *">
+                <select
+                  className="field"
+                  disabled={mysteriesLoading}
+                  value={selClassOptions.mysteryId ?? ''}
+                  onChange={e => {
+                    const m = mysteries.find(x => x.id === e.target.value) ?? null
+                    setSelClassOptions(prev => ({
+                      ...prev,
+                      mysteryId:   m?.id   ?? null,
+                      mysteryName: m?.name ?? null,
+                    }))
+                  }}
+                >
+                  <option value="">— Select a mystery —</option>
+                  {mysteries.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
+              </Field>
+            )}
+
+            {/* Domains */}
+            {showDomains && Array.from({ length: nDomains }).map((_, slot) => (
+              <Field key={slot} label={nDomains > 1 ? `Domain ${slot + 1}` : 'Domain'}>
+                <select
+                  className="field"
+                  disabled={domainsLoading}
+                  value={selClassOptions.domainIds?.[slot] ?? ''}
+                  onChange={e => {
+                    const dom = domains.find(d => d.id === e.target.value)
+                    if (dom) setDomain(slot as 0 | 1, dom.id, dom.name)
+                    else setDomain(slot as 0 | 1, '', '')
+                  }}
+                >
+                  <option value="">— Select a domain —</option>
+                  {domains.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </Field>
+            ))}
+          </div>
+        )}
 
         {/* Favored Class Bonus */}
         <div className="flex flex-col gap-2">
@@ -168,7 +315,7 @@ export function CreateCharacterModal({ open, onClose }: CreateCharacterModalProp
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="secondary" onClick={() => { reset(); onClose() }}>
+          <Button type="button" variant="secondary" onClick={() => { reset(); setSelClassOptions({}); onClose() }}>
             Cancel
           </Button>
           <Button type="submit" loading={isSubmitting}>

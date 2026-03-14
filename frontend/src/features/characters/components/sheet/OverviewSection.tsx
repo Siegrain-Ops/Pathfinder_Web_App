@@ -4,15 +4,39 @@ import { SectionPanel }      from './SectionPanel'
 import { Button }            from '@/components/ui/Button'
 import { useCharacterSheet } from '../../hooks/useCharacterSheet'
 import { useReferenceClasses } from '../../hooks/useReferenceClasses'
-import type { FavoredClassBonus } from '@/types'
-import { useReferenceRaces } from '../../hooks/useReferenceRaces'
+import type { ClassOptions, FavoredClassBonus } from '@/types'
+import { useReferenceRaces }      from '../../hooks/useReferenceRaces'
+import { useReferenceArchetypes } from '../../hooks/useReferenceArchetypes'
+import { useReferenceBloodlines } from '../../hooks/useReferenceBloodlines'
+import { useReferenceDomains }    from '../../hooks/useReferenceDomains'
+import { useReferenceMysteries }  from '../../hooks/useReferenceMysteries'
 import { ALIGNMENTS, COMMON_CLASSES, COMMON_RACES, SIZE_CATEGORIES } from '@/lib/constants'
+
+const BLOODLINE_CLASSES  = ['sorcerer', 'bloodrager']
+const DOMAIN_CLASSES     = ['cleric', 'druid', 'inquisitor']
+const MYSTERY_CLASSES    = ['oracle']
+const TWO_DOMAIN_CLASSES = ['cleric']
+function classKey(n: string) { return n.toLowerCase() }
+function domainCount(cls: string) { return TWO_DOMAIN_CLASSES.includes(classKey(cls)) ? 2 : 1 }
 
 export function OverviewSection() {
   const { data, update, setReferenceRaceId } = useCharacterSheet()
   const { classes, isLoading: classesLoading } = useReferenceClasses()
-  const { races, isLoading: racesLoading } = useReferenceRaces()
+  const { races,   isLoading: racesLoading   } = useReferenceRaces()
   const [isLocked, setIsLocked] = useState(true)
+
+  // Class-option hooks — each guards against empty className
+  const currentClassName = data?.className ?? ''
+  const { archetypes, isLoading: archetypesLoading } = useReferenceArchetypes(currentClassName)
+  const { bloodlines, isLoading: bloodlinesLoading } = useReferenceBloodlines(
+    BLOODLINE_CLASSES.includes(classKey(currentClassName)) ? currentClassName : '',
+  )
+  const { domains, isLoading: domainsLoading } = useReferenceDomains(
+    DOMAIN_CLASSES.includes(classKey(currentClassName)) ? currentClassName : '',
+  )
+  const { mysteries, isLoading: mysteriesLoading } = useReferenceMysteries(
+    MYSTERY_CLASSES.includes(classKey(currentClassName)) ? currentClassName : '',
+  )
 
   if (!data) return null
 
@@ -142,6 +166,106 @@ export function OverviewSection() {
             </FormField>
           </div>
         </div>
+
+        {/* ── Class Options ─────────────────────────────────── */}
+        {(() => {
+          const co = d.classOptions ?? {}
+          const showArchetypes = archetypes.length > 0
+          const showBloodline  = BLOODLINE_CLASSES.includes(classKey(d.className)) && bloodlines.length > 0
+          const showMystery    = MYSTERY_CLASSES.includes(classKey(d.className))   && mysteries.length > 0
+          const showDomains    = DOMAIN_CLASSES.includes(classKey(d.className))    && domains.length   > 0
+          if (!showArchetypes && !showBloodline && !showMystery && !showDomains) return null
+          const nDomains = domainCount(d.className)
+
+          function patchOptions(patch: Partial<ClassOptions>) {
+            update({ classOptions: { ...co, ...patch } })
+          }
+          function setDomainSlot(slot: 0 | 1, id: string, name: string) {
+            const ids   = [...(co.domainIds   ?? [])]
+            const names = [...(co.domainNames ?? [])]
+            ids[slot]   = id
+            names[slot] = name
+            patchOptions({ domainIds: ids.filter(Boolean), domainNames: names.filter(Boolean) })
+          }
+
+          return (
+            <div className="flex flex-col gap-3">
+              <SubHeader>Class Options</SubHeader>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                {showArchetypes && (
+                  <FormField label="Archetype">
+                    <select
+                      className="field"
+                      disabled={isLocked || archetypesLoading}
+                      value={co.archetypeId ?? ''}
+                      onChange={e => {
+                        const arch = archetypes.find(a => a.id === e.target.value) ?? null
+                        patchOptions({ archetypeId: arch?.id ?? null, archetypeName: arch?.name ?? null })
+                      }}
+                    >
+                      <option value="">— None / Base Class —</option>
+                      {archetypes.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                  </FormField>
+                )}
+
+                {showBloodline && (
+                  <FormField label="Bloodline">
+                    <select
+                      className="field"
+                      disabled={isLocked || bloodlinesLoading}
+                      value={co.bloodlineId ?? ''}
+                      onChange={e => {
+                        const bl = bloodlines.find(b => b.id === e.target.value) ?? null
+                        patchOptions({ bloodlineId: bl?.id ?? null, bloodlineName: bl?.name ?? null })
+                      }}
+                    >
+                      <option value="">— Select a bloodline —</option>
+                      {bloodlines.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
+                  </FormField>
+                )}
+
+                {showMystery && (
+                  <FormField label="Mystery">
+                    <select
+                      className="field"
+                      disabled={isLocked || mysteriesLoading}
+                      value={co.mysteryId ?? ''}
+                      onChange={e => {
+                        const m = mysteries.find(x => x.id === e.target.value) ?? null
+                        patchOptions({ mysteryId: m?.id ?? null, mysteryName: m?.name ?? null })
+                      }}
+                    >
+                      <option value="">— Select a mystery —</option>
+                      {mysteries.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                  </FormField>
+                )}
+
+                {showDomains && Array.from({ length: nDomains }).map((_, slot) => (
+                  <FormField key={slot} label={nDomains > 1 ? `Domain ${slot + 1}` : 'Domain'}>
+                    <select
+                      className="field"
+                      disabled={isLocked || domainsLoading}
+                      value={co.domainIds?.[slot] ?? ''}
+                      onChange={e => {
+                        const dom = domains.find(dom => dom.id === e.target.value)
+                        if (dom) setDomainSlot(slot as 0 | 1, dom.id, dom.name)
+                        else     setDomainSlot(slot as 0 | 1, '', '')
+                      }}
+                    >
+                      <option value="">— Select a domain —</option>
+                      {domains.map(dom => <option key={dom.id} value={dom.id}>{dom.name}</option>)}
+                    </select>
+                  </FormField>
+                ))}
+
+              </div>
+            </div>
+          )
+        })()}
 
         {/* ── Physical Description ──────────────────────────── */}
         <div className="flex flex-col gap-3">

@@ -21,6 +21,25 @@ export type SizeCategory =
   | 'Medium' | 'Large' | 'Huge' | 'Gargantuan' | 'Colossal'
 
 /**
+ * Structured class-option selections (archetype, bloodline, mystery, domains).
+ * All fields are optional for backward-compatibility with existing characters.
+ */
+export interface ClassOptions {
+  /** Selected archetype id + name (denormalized for display without extra fetch) */
+  archetypeId?:   string | null
+  archetypeName?: string | null
+  /** Bloodline selection — relevant for Sorcerer, Bloodrager */
+  bloodlineId?:   string | null
+  bloodlineName?: string | null
+  /** Mystery selection — relevant for Oracle */
+  mysteryId?:     string | null
+  mysteryName?:   string | null
+  /** Domain selections — up to 2 for Cleric, 1 for Inquisitor/Druid */
+  domainIds?:     string[]
+  domainNames?:   string[]
+}
+
+/**
  * Pathfinder 1e Favored Class Bonus choice.
  * Each time the character gains a level in their favored class they get either
  * +1 maximum HP or +1 skill rank.
@@ -75,6 +94,9 @@ export interface CharacterData {
   // ── Progression preference ────────────────────────────────
   /** Favored class bonus chosen at creation; absent on older characters → treat as 'hp'. */
   favoredClassBonus?: FavoredClassBonus
+
+  /** Class-specific option selections (archetype, bloodline, mystery, domains). */
+  classOptions?: ClassOptions
 
   // ── Active Effects (buff/debuff/condition tracking) ───────
   activeEffects?: ActiveEffect[]
