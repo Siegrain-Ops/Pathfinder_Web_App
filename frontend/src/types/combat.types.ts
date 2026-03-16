@@ -24,6 +24,21 @@ export interface ArmorClass {
 /** Base attack bonus by class level — stored as an array (multiple attacks). */
 export type BaseAttackBonus = number[]
 
+export type WeaponType = 'melee' | 'ranged'
+
+/** A single weapon entry in the offense table. */
+export interface WeaponEntry {
+  id: string
+  name: string
+  type: WeaponType
+  /** Weapon-specific attack modifier stacked on top of the base melee/ranged bonus. */
+  attackBonus: number
+  damage: string       // e.g. "1d8+4"
+  critRange: string    // e.g. "19–20"
+  critMult: string     // e.g. "×2"
+  notes?: string
+}
+
 export interface Combat {
   hitPoints: HitPoints
   armorClass: ArmorClass
@@ -54,6 +69,8 @@ export interface Combat {
   spellDcMisc?: number
   /** Quick notes for spellcasting in combat */
   spellcastingNotes?: string
+  /** Weapon list for the offense table */
+  weapons?: WeaponEntry[]
 }
 
 export const defaultHitPoints = (): HitPoints => ({
