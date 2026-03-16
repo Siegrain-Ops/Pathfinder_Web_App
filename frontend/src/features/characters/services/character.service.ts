@@ -2,13 +2,11 @@
 // Character API service
 // ---------------------------------------------------------------------------
 
-import axios from 'axios'
+import { authApiClient as api } from '@/lib/api/client'
 import type { Character, CharacterSummary, CreateCharacterInput } from '@/types'
 import type { ApiResponse } from '@/types/api.types'
 
 const BASE = '/api/characters'
-
-const api = axios.create({ baseURL: '', withCredentials: true })
 
 export const characterService = {
   async getAll(): Promise<CharacterSummary[]> {

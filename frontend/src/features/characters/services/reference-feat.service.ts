@@ -1,7 +1,5 @@
-import axios from 'axios'
+import { apiClient as api } from '@/lib/api/client'
 import type { ApiResponse, ReferenceFeat } from '@/types'
-
-const api = axios.create({ baseURL: '' })
 const BASE = '/api/reference/feats'
 
 export const referenceFeatService = {

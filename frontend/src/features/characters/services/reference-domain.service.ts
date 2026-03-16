@@ -1,7 +1,5 @@
-import axios from 'axios'
+import { apiClient as api } from '@/lib/api/client'
 import type { ApiResponse, ReferenceDomain } from '@/types'
-
-const api  = axios.create({ baseURL: '' })
 const BASE = '/api/reference/domains'
 
 export const referenceDomainService = {

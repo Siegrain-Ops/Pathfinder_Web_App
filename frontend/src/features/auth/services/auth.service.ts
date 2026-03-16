@@ -2,7 +2,7 @@
 // Auth API service
 // ---------------------------------------------------------------------------
 
-import axios from 'axios'
+import { authApiClient as api } from '@/lib/api/client'
 import type { ApiResponse } from '@/types/api.types'
 
 export interface AuthUser {
@@ -10,8 +10,6 @@ export interface AuthUser {
   email: string
   displayName: string
 }
-
-const api = axios.create({ baseURL: '', withCredentials: true })
 
 const BASE = '/api/auth'
 
