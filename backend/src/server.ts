@@ -20,6 +20,7 @@ dotenv.config()
 
 const app  = express()
 const PORT = process.env.PORT ?? 3000
+const HOST = '0.0.0.0'
 
 // ── Global middleware ──────────────────────────────────────────────────────
 app.use(cors({
@@ -57,8 +58,8 @@ app.use((_req, res) => {
 app.use(errorHandler)
 
 // ── Start ──────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`[server] running on http://localhost:${PORT}`)
+app.listen(Number(PORT), HOST, () => {
+  console.log(`[server] running on http://${HOST}:${PORT}`)
   console.log(`[server] env: ${process.env.NODE_ENV ?? 'development'}`)
 })
 
