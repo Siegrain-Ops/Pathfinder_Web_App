@@ -8,8 +8,12 @@ import { characterSpellsController } from './character-spells.controller'
 import { characterFeatsController }  from './character-feats.controller'
 import { validate }                  from '../../common/middleware/validateRequest'
 import { createCharacterSchema, updateCharacterSchema } from './validators'
+import { requireAuth }               from '../../middleware/requireAuth'
 
 const router = Router()
+
+// All character routes require authentication
+router.use(requireAuth)
 
 // ── Core CRUD ────────────────────────────────────────────────────────────────
 

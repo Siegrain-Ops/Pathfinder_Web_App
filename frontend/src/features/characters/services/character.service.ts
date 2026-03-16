@@ -8,7 +8,7 @@ import type { ApiResponse } from '@/types/api.types'
 
 const BASE = '/api/characters'
 
-const api = axios.create({ baseURL: '' })
+const api = axios.create({ baseURL: '', withCredentials: true })
 
 export const characterService = {
   async getAll(): Promise<CharacterSummary[]> {

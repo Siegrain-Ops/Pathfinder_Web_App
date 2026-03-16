@@ -29,26 +29,26 @@ function toSummary(record: {
 // ── Service ─────────────────────────────────────────────────────────────────
 
 export const characterService = {
-  async getAll(): Promise<CharacterSummary[]> {
-    const records = await characterRepository.findAll()
+  async getAll(userId: string): Promise<CharacterSummary[]> {
+    const records = await characterRepository.findAll(userId)
     return records.map(toSummary)
   },
 
-  async getById(id: string) {
-    const record = await characterRepository.findById(id)
+  async getById(id: string, userId: string) {
+    const record = await characterRepository.findById(id, userId)
     if (!record) throw AppError.notFound('Character')
     return record
   },
 
-  async create(input: CreateCharacterRequest) {
+  async create(input: CreateCharacterRequest, userId: string) {
     const id   = randomUUID()
     // Frontend validates the full CharacterData shape; backend trusts it here.
     const data = input.data as unknown as CharacterData
-    return characterRepository.create(id, data, input.referenceRaceId)
+    return characterRepository.create(id, data, input.referenceRaceId, userId)
   },
 
-  async update(id: string, input: UpdateCharacterRequest) {
-    const existing = await characterRepository.findById(id)
+  async update(id: string, input: UpdateCharacterRequest, userId: string) {
+    const existing = await characterRepository.findById(id, userId)
     if (!existing) throw AppError.notFound('Character')
 
     // Deep-merge: existing data + partial update from client
@@ -59,14 +59,14 @@ export const characterService = {
     return characterRepository.update(id, merged, input.referenceRaceId)
   },
 
-  async delete(id: string) {
-    const exists = await characterRepository.exists(id)
+  async delete(id: string, userId: string) {
+    const exists = await characterRepository.existsForUser(id, userId)
     if (!exists) throw AppError.notFound('Character')
     await characterRepository.delete(id)
   },
 
-  async duplicate(id: string) {
-    const original = await characterRepository.findById(id)
+  async duplicate(id: string, userId: string) {
+    const original = await characterRepository.findById(id, userId)
     if (!original) throw AppError.notFound('Character')
 
     const copy: CharacterData = {
@@ -75,6 +75,6 @@ export const characterService = {
     }
 
     const newId = randomUUID()
-    return characterRepository.create(newId, copy, original.referenceRaceId)
+    return characterRepository.create(newId, copy, original.referenceRaceId, userId)
   },
 }

@@ -1,8 +1,10 @@
 import express from 'express'
 import cors    from 'cors'
 import dotenv  from 'dotenv'
+import cookieParser from 'cookie-parser'
 
 import { characterRoutes }    from './modules/characters/routes'
+import { authRoutes }         from './modules/auth/auth.router'
 import { referenceSpellRoutes } from './modules/reference/spells/routes'
 import { referenceFeatRoutes }  from './modules/reference/feats/routes'
 import { referenceRaceRoutes }  from './modules/reference/races/routes'
@@ -21,9 +23,11 @@ const PORT = process.env.PORT ?? 3000
 
 // ── Global middleware ──────────────────────────────────────────────────────
 app.use(cors({
-  origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+  origin: process.env.FRONTEND_URL ?? process.env.CORS_ORIGIN ?? 'http://localhost:5173',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
 }))
+app.use(cookieParser())
 app.use(express.json({ limit: '2mb' }))
 
 // ── Health check ───────────────────────────────────────────────────────────
@@ -32,6 +36,7 @@ app.get('/health', (_req, res) => {
 })
 
 // ── API routes ─────────────────────────────────────────────────────────────
+app.use('/api/auth',            authRoutes)
 app.use('/api/characters',      characterRoutes)
 app.use('/api/reference/spells', referenceSpellRoutes)
 app.use('/api/reference/feats',  referenceFeatRoutes)

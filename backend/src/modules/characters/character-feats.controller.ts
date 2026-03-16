@@ -12,7 +12,7 @@ export const characterFeatsController = {
   /** GET /api/characters/:id/feats */
   list: async (req: Request<{ id: string }>, res: Response, next: NextFunction) => {
     try {
-      const exists = await characterRepository.exists(req.params.id)
+      const exists = await characterRepository.existsForUser(req.params.id, req.user!.id)
       if (!exists) throw AppError.notFound('Character')
       const data = await characterFeatsRepository.findAllForCharacter(req.params.id)
       ok(res, data)
@@ -25,7 +25,7 @@ export const characterFeatsController = {
       const { referenceFeatId, notes } = req.body as { referenceFeatId: string; notes?: string }
       if (!referenceFeatId) throw AppError.badRequest('referenceFeatId is required')
 
-      const charExists = await characterRepository.exists(req.params.id)
+      const charExists = await characterRepository.existsForUser(req.params.id, req.user!.id)
       if (!charExists)  throw AppError.notFound('Character')
 
       const featExists = await referenceFeatRepository.findById(referenceFeatId)

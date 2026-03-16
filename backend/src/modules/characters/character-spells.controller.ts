@@ -12,7 +12,7 @@ export const characterSpellsController = {
   /** GET /api/characters/:id/spells */
   list: async (req: Request<{ id: string }>, res: Response, next: NextFunction) => {
     try {
-      const exists = await characterRepository.exists(req.params.id)
+      const exists = await characterRepository.existsForUser(req.params.id, req.user!.id)
       if (!exists) throw AppError.notFound('Character')
       const data = await characterSpellsRepository.findAllForCharacter(req.params.id)
       ok(res, data)
@@ -29,7 +29,7 @@ export const characterSpellsController = {
       }
       if (!referenceSpellId) throw AppError.badRequest('referenceSpellId is required')
 
-      const charExists  = await characterRepository.exists(req.params.id)
+      const charExists  = await characterRepository.existsForUser(req.params.id, req.user!.id)
       if (!charExists)  throw AppError.notFound('Character')
 
       const spellExists = await referenceSpellRepository.findById(referenceSpellId)
