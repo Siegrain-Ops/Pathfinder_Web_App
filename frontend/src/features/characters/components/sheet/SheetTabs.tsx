@@ -3,7 +3,7 @@ import { clsx } from 'clsx'
 export type SheetTab =
   | 'overview' | 'stats' | 'combat' | 'saves'
   | 'skills'   | 'feats' | 'abilities'
-  | 'spells'   | 'inventory' | 'notes' | 'levelup'
+  | 'spells'   | 'inventory' | 'notes' | 'levelup' | 'dice'
 
 type TabColor = 'amber' | 'red' | 'emerald'
 
@@ -18,6 +18,7 @@ const TABS: { id: SheetTab; label: string; color?: TabColor }[] = [
   { id: 'spells',     label: 'Spells'     },
   { id: 'inventory',  label: 'Inventory'  },
   { id: 'notes',      label: 'Notes'      },
+  { id: 'dice',       label: '🎲 Dice',   color: 'amber'   },
   { id: 'levelup',    label: 'LvL UP',    color: 'emerald' },
 ]
 

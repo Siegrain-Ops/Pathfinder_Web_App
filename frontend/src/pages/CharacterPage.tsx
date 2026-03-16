@@ -16,6 +16,7 @@ import { SpellsSection }        from '@/features/characters/components/sheet/Spe
 import { InventorySection }     from '@/features/characters/components/sheet/InventorySection'
 import { NotesSection }         from '@/features/characters/components/sheet/NotesSection'
 import { LevelUpSection }       from '@/features/characters/components/sheet/LevelUpSection'
+import { DiceRollerSection }   from '@/features/characters/components/sheet/DiceRollerSection'
 
 export function CharacterPage() {
   const { id }        = useParams<{ id: string }>()
@@ -85,8 +86,9 @@ export function CharacterPage() {
           <TabPanel active={tab} id="abilities">  <AbilitiesSection />  </TabPanel>
           <TabPanel active={tab} id="spells">     <SpellsSection />     </TabPanel>
           <TabPanel active={tab} id="inventory">  <InventorySection />  </TabPanel>
-          <TabPanel active={tab} id="notes">      <NotesSection />      </TabPanel>
-          <TabPanel active={tab} id="levelup">   <LevelUpSection />    </TabPanel>
+          <TabPanel active={tab} id="notes">      <NotesSection />        </TabPanel>
+          <TabPanel active={tab} id="dice">       <DiceRollerSection />   </TabPanel>
+          <TabPanel active={tab} id="levelup">   <LevelUpSection />      </TabPanel>
         </div>
       </div>
     </div>
