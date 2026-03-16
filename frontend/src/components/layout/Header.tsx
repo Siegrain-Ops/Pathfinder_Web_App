@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { clsx } from 'clsx'
 import { useAuthStore } from '@/app/store/authStore'
+import { SupportButton } from '@/components/ui/SupportButton'
 
 export function Header() {
   const { pathname } = useLocation()
@@ -27,6 +28,7 @@ export function Header() {
       <nav className="flex items-center gap-1">
         <NavLink to="/"           label="Characters" active={pathname === '/'} />
         <NavLink to="/settings"   label="Settings"   active={pathname === '/settings'} />
+        <SupportButton />
       </nav>
 
       {/* User / Logout */}
