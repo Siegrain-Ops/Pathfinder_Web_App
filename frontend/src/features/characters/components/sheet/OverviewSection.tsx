@@ -24,6 +24,7 @@ export function OverviewSection() {
   const { classes, isLoading: classesLoading } = useReferenceClasses()
   const { races,   isLoading: racesLoading   } = useReferenceRaces()
   const [isLocked, setIsLocked] = useState(true)
+  const [langInput, setLangInput] = useState<string | null>(null)
 
   // Class-option hooks — each guards against empty className
   const currentClassName = data?.className ?? ''
@@ -306,10 +307,17 @@ export function OverviewSection() {
             <FormField label="Languages">
               <input
                 className="field"
-                value={data.languages.join(', ')}
+                value={langInput ?? data.languages.join(', ')}
                 disabled={isLocked}
-                onChange={e => update({ languages: e.target.value.split(',').map(l => l.trim()).filter(Boolean) })}
                 placeholder="Common, Elvish, …"
+                onFocus={() => setLangInput(data.languages.join(', '))}
+                onChange={e => setLangInput(e.target.value)}
+                onBlur={() => {
+                  if (langInput !== null) {
+                    update({ languages: langInput.split(',').map(l => l.trim()).filter(Boolean) })
+                    setLangInput(null)
+                  }
+                }}
               />
             </FormField>
           </div>

@@ -143,7 +143,13 @@ export function SpellsSection() {
       {/* ── Spells per Day ──────────────────────────────────── */}
       <SectionPanel title="Spells per Day">
         <div className="flex flex-wrap gap-3">
-          {SPELL_LEVELS.map(lvl => (
+          {/* Level 0 = cantrips: unlimited, no slot tracking */}
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-[10px] font-medium text-stone-500 uppercase tracking-wider">Cantrips</span>
+            <span className="w-14 rounded-lg border border-stone-700/60 bg-stone-900/60 text-center font-bold font-mono text-lg py-1.5 text-stone-500">∞</span>
+            <span className="text-[9px] text-stone-600 italic">unlimited</span>
+          </div>
+          {SPELL_LEVELS.filter(lvl => lvl > 0).map(lvl => (
             <StatInput
               key={lvl}
               label={`Lvl ${lvl}`}

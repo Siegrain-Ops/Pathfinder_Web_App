@@ -250,13 +250,20 @@ export function CombatSection() {
               <button
                 className="h-9 w-9 rounded-lg border border-stone-600 bg-stone-800 text-stone-300 text-lg font-bold
                            hover:bg-red-900/50 hover:border-red-700/60 hover:text-red-300 transition-colors"
-                onClick={() => updateHp({ current: hpCur - 1 })}
+                onClick={() => {
+                  const temp = d.combat.hitPoints.temp
+                  if (temp > 0) {
+                    updateHp({ temp: temp - 1 })
+                  } else {
+                    updateHp({ current: hpCur - 1 })
+                  }
+                }}
               >−</button>
               <div className="relative">
                 <input
                   type="number"
                   value={hpCur}
-                  onChange={e => updateHp({ current: Number(e.target.value) })}
+                  onChange={e => updateHp({ current: Math.min(Number(e.target.value), hpMax) })}
                   className={clsx(
                     'w-20 rounded-lg border bg-stone-900 text-center font-bold font-mono text-4xl py-1.5',
                     'focus:outline-none focus:ring-2 focus:ring-amber-500/40 transition-colors',
@@ -892,8 +899,9 @@ function SpellCombatPanel({
         {spellsAtLevel.map(spell => {
           const isCantrip   = spell.level === 0
           const slotsLeft   = isCantrip ? Infinity : slotRemaining
-          // For prepared casters: can't cast same spell more times than prepared (if prepared > 0)
-          const prepLimit   = spell.prepared > 0 ? spell.prepared : Infinity
+          // For prepared casters: can't cast same spell more times than prepared (if prepared > 0).
+          // Cantrips (level 0) are always unlimited regardless of the prepared field.
+          const prepLimit   = isCantrip ? Infinity : spell.prepared > 0 ? spell.prepared : Infinity
           const canCast     = slotsLeft > 0 && spell.cast < prepLimit
           const fullySpent  = !isCantrip && (slotsLeft === 0 || spell.cast >= prepLimit)
 

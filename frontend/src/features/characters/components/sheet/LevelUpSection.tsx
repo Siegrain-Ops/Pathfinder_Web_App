@@ -37,7 +37,7 @@ type StepId =
   | 'spells'
 
 const ALL_STEPS: StepId[] = [
-  'confirm', 'hp', 'bab_saves', 'skills', 'features', 'feat', 'ability', 'spells',
+  'hp', 'bab_saves', 'skills', 'features', 'feat', 'ability', 'spells', 'confirm',
 ]
 
 // ---------------------------------------------------------------------------
@@ -49,7 +49,7 @@ export function LevelUpSection() {
   const { classes, isLoading } = useReferenceClasses()
 
   const [done, setDone]                               = useState<Set<StepId>>(new Set())
-  const [expanded, setExpanded]                       = useState<StepId | null>('confirm')
+  const [expanded, setExpanded]                       = useState<StepId | null>('hp')
   const [hpApplied, setHpApplied]                     = useState(false)
   const [babApplied, setBabApplied]                   = useState(false)
   const [savesApplied, setSavesApplied]               = useState(false)
@@ -117,7 +117,7 @@ export function LevelUpSection() {
     if (activeSteps.every(s => newDone.has(s))) {
       save().then(() => {
         setDone(new Set())
-        setExpanded('confirm')
+        setExpanded('hp')
         setHpApplied(false)
         setBabApplied(false)
         setSavesApplied(false)
