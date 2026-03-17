@@ -51,7 +51,8 @@ export function SheetTabs({ active, onChange, hiddenTabs = [] }: SheetTabsProps)
     : TABS
 
   return (
-    <div className="flex overflow-x-auto border-b border-stone-800 bg-stone-950 scrollbar-hide px-1">
+    <div className="relative border-b border-stone-800 bg-stone-950">
+    <div className="flex overflow-x-auto scrollbar-hide px-1">
       {visibleTabs.map((tab, idx) => {
         const isActive = active === tab.id
         const colored  = tab.color
@@ -87,6 +88,9 @@ export function SheetTabs({ active, onChange, hiddenTabs = [] }: SheetTabsProps)
           </span>
         )
       })}
+    </div>
+    {/* Right-edge scroll hint — mobile only */}
+    <div className="pointer-events-none absolute right-0 top-0 h-full w-10 bg-gradient-to-l from-stone-950 to-transparent sm:hidden" />
     </div>
   )
 }

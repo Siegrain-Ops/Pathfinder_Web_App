@@ -17,7 +17,8 @@ export function AppLayout() {
       <footer className="shrink-0 border-t border-stone-800 bg-stone-950/90 px-4 py-2">
         <div className="mx-auto flex max-w-6xl flex-col gap-1 text-[11px] text-stone-500 sm:flex-row sm:items-center sm:justify-between">
           <p>
-            PathLegends is an unofficial Pathfinder 1e fan project, not affiliated with Paizo. Reference data sourced from d20pfsrd.com and other OGC sources.
+            <span className="sm:hidden">Unofficial PF1e fan project · not affiliated with Paizo</span>
+            <span className="hidden sm:inline">PathLegends is an unofficial Pathfinder 1e fan project, not affiliated with Paizo. Reference data sourced from d20pfsrd.com and other OGC sources.</span>
           </p>
           <div className="flex items-center gap-3">
             <FooterLink href={LEGAL_DOC_URL} label="Legal" />
