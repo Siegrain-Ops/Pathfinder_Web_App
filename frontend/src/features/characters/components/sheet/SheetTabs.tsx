@@ -3,28 +3,32 @@ import { clsx } from 'clsx'
 export type SheetTab =
   | 'overview' | 'stats' | 'combat' | 'saves'
   | 'skills'   | 'feats' | 'abilities'
-  | 'spells'   | 'inventory' | 'notes' | 'levelup' | 'dice'
+  | 'spells'   | 'arcane_bond'
+  | 'inventory' | 'notes' | 'levelup' | 'dice'
 
-type TabColor = 'amber' | 'red' | 'emerald'
+type TabColor = 'amber' | 'red' | 'emerald' | 'violet'
 
 const TABS: { id: SheetTab; label: string; color?: TabColor }[] = [
-  { id: 'overview',   label: 'Overview',  color: 'amber'   },
-  { id: 'combat',     label: 'Combat',    color: 'red'     },
-  { id: 'stats',      label: 'Stats'      },
-  { id: 'saves',      label: 'Saves'      },
-  { id: 'skills',     label: 'Skills'     },
-  { id: 'feats',      label: 'Feats'      },
-  { id: 'abilities',  label: 'Abilities'  },
-  { id: 'spells',     label: 'Spells'     },
-  { id: 'inventory',  label: 'Inventory'  },
-  { id: 'notes',      label: 'Notes'      },
-  { id: 'dice',       label: '🎲 Dice',   color: 'amber'   },
-  { id: 'levelup',    label: 'LvL UP',    color: 'emerald' },
+  { id: 'overview',    label: 'Overview',     color: 'amber'  },
+  { id: 'combat',      label: 'Combat',       color: 'red'    },
+  { id: 'stats',       label: 'Stats'         },
+  { id: 'saves',       label: 'Saves'         },
+  { id: 'skills',      label: 'Skills'        },
+  { id: 'feats',       label: 'Feats'         },
+  { id: 'abilities',   label: 'Abilities'     },
+  { id: 'spells',      label: 'Spells'        },
+  { id: 'arcane_bond', label: 'Arcane Bond',  color: 'violet' },
+  { id: 'inventory',   label: 'Inventory'     },
+  { id: 'notes',       label: 'Notes'         },
+  { id: 'dice',        label: '🎲 Dice',      color: 'amber'  },
+  { id: 'levelup',     label: 'LvL UP',       color: 'emerald'},
 ]
 
 interface SheetTabsProps {
-  active:   SheetTab
-  onChange: (tab: SheetTab) => void
+  active:      SheetTab
+  onChange:    (tab: SheetTab) => void
+  /** Tab IDs to hide from the bar (used for class-specific tabs). */
+  hiddenTabs?: SheetTab[]
 }
 
 // Active and inactive styles per color
@@ -32,24 +36,30 @@ const COLOR_ACTIVE: Record<TabColor, string> = {
   amber:   'border-amber-500   text-amber-300   bg-amber-950/30',
   red:     'border-red-500     text-red-300     bg-red-950/30',
   emerald: 'border-emerald-500 text-emerald-300 bg-emerald-950/30',
+  violet:  'border-violet-500  text-violet-300  bg-violet-950/30',
 }
 const COLOR_INACTIVE: Record<TabColor, string> = {
   amber:   'border-transparent text-amber-600/80   hover:text-amber-400   hover:border-amber-600/40   hover:bg-amber-950/20',
   red:     'border-transparent text-red-600/80     hover:text-red-400     hover:border-red-600/40     hover:bg-red-950/20',
   emerald: 'border-transparent text-emerald-600/80 hover:text-emerald-400 hover:border-emerald-600/40 hover:bg-emerald-950/20',
+  violet:  'border-transparent text-violet-600/80  hover:text-violet-400  hover:border-violet-600/40  hover:bg-violet-950/20',
 }
 
-export function SheetTabs({ active, onChange }: SheetTabsProps) {
+export function SheetTabs({ active, onChange, hiddenTabs = [] }: SheetTabsProps) {
+  const visibleTabs = hiddenTabs.length > 0
+    ? TABS.filter(t => !hiddenTabs.includes(t.id))
+    : TABS
+
   return (
     <div className="flex overflow-x-auto border-b border-stone-800 bg-stone-950 scrollbar-hide px-1">
-      {TABS.map((tab, idx) => {
+      {visibleTabs.map((tab, idx) => {
         const isActive = active === tab.id
         const colored  = tab.color
 
         // Separator before the first non-colored tab (after the hero group)
-        const prevColored = idx > 0 && TABS[idx - 1].color && !colored
-        // Separator before LvL UP (last colored tab)
-        const nextSeparator = !colored && idx < TABS.length - 1 && TABS[idx + 1].color
+        const prevColored = idx > 0 && visibleTabs[idx - 1].color && !colored
+        // Separator before the last colored tab (dice/levelup)
+        const nextSeparator = !colored && idx < visibleTabs.length - 1 && visibleTabs[idx + 1].color
 
         return (
           <span key={tab.id} className="flex items-center">

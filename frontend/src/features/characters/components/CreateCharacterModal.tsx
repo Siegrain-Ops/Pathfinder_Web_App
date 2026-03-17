@@ -25,14 +25,19 @@ import { useReferenceMysteries }  from '../hooks/useReferenceMysteries'
 const BLOODLINE_CLASSES  = ['sorcerer', 'bloodrager']
 const DOMAIN_CLASSES     = ['cleric', 'druid', 'inquisitor']
 const MYSTERY_CLASSES    = ['oracle']
+const WIZARD_CLASSES     = ['wizard']
 /** Clerics pick 2 domains; others pick 1 */
 const TWO_DOMAIN_CLASSES = ['cleric']
 
+const BONDED_ITEM_KINDS = ['Amulet', 'Ring', 'Staff', 'Wand', 'Sword', 'Dagger', 'Axe', 'Bow', 'Other'] as const
+const FAMILIAR_KINDS    = ['Bat', 'Cat', 'Fox', 'Hawk', 'Lizard', 'Monkey', 'Owl', 'Rat', 'Raven', 'Snake', 'Toad', 'Weasel', 'Other'] as const
+
 function classKey(name: string) { return name.toLowerCase() }
-function hasBloodline(cls: string)  { return BLOODLINE_CLASSES.includes(classKey(cls)) }
-function hasDomains(cls: string)    { return DOMAIN_CLASSES.includes(classKey(cls)) }
-function hasMystery(cls: string)    { return MYSTERY_CLASSES.includes(classKey(cls)) }
-function domainCount(cls: string)   { return TWO_DOMAIN_CLASSES.includes(classKey(cls)) ? 2 : 1 }
+function hasBloodline(cls: string)    { return BLOODLINE_CLASSES.includes(classKey(cls)) }
+function hasDomains(cls: string)      { return DOMAIN_CLASSES.includes(classKey(cls)) }
+function hasMystery(cls: string)      { return MYSTERY_CLASSES.includes(classKey(cls)) }
+function hasArcaneBond(cls: string)   { return WIZARD_CLASSES.includes(classKey(cls)) }
+function domainCount(cls: string)     { return TWO_DOMAIN_CLASSES.includes(classKey(cls)) ? 2 : 1 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -98,11 +103,12 @@ export function CreateCharacterModal({ open, onClose }: CreateCharacterModalProp
     setSelClassOptions({})
   }, [selectedClassName])
 
-  const showBloodline  = hasBloodline(selectedClassName)  && bloodlines.length  > 0
-  const showDomains    = hasDomains(selectedClassName)    && domains.length     > 0
-  const showMystery    = hasMystery(selectedClassName)    && mysteries.length   > 0
-  const showArchetypes = archetypes.length > 0
-  const showSection    = showBloodline || showDomains || showMystery || showArchetypes
+  const showBloodline   = hasBloodline(selectedClassName)  && bloodlines.length  > 0
+  const showDomains     = hasDomains(selectedClassName)    && domains.length     > 0
+  const showMystery     = hasMystery(selectedClassName)    && mysteries.length   > 0
+  const showArchetypes  = archetypes.length > 0
+  const showArcaneBond  = hasArcaneBond(selectedClassName)
+  const showSection     = showBloodline || showDomains || showMystery || showArchetypes || showArcaneBond
 
   const nDomains = domainCount(selectedClassName)
 
@@ -261,6 +267,99 @@ export function CreateCharacterModal({ open, onClose }: CreateCharacterModalProp
                 </select>
               </Field>
             ))}
+
+            {/* Arcane Bond — Wizard only */}
+            {showArcaneBond && (
+              <>
+                <div className="col-span-full mt-1 mb-1 border-t border-stone-700/60 pt-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-stone-600">
+                    Arcane Bond
+                  </span>
+                </div>
+
+                <Field label="Bond Type">
+                  <select
+                    className="field"
+                    value={selClassOptions.arcaneBondType ?? ''}
+                    onChange={e => {
+                      const val = e.target.value
+                      setSelClassOptions(prev => ({
+                        ...prev,
+                        arcaneBondType: val === 'bonded_item' || val === 'familiar' ? val : null,
+                        // Clear bond-specific fields when switching type
+                        bondedItemKind: val === 'bonded_item' ? prev.bondedItemKind : null,
+                        bondedItemName: val === 'bonded_item' ? prev.bondedItemName : null,
+                        familiarKind:   val === 'familiar'    ? prev.familiarKind   : null,
+                        familiarName:   val === 'familiar'    ? prev.familiarName   : null,
+                        familiarNotes:  val === 'familiar'    ? prev.familiarNotes  : null,
+                      }))
+                    }}
+                  >
+                    <option value="">— Choose bond type —</option>
+                    <option value="bonded_item">Bonded Item</option>
+                    <option value="familiar">Familiar</option>
+                  </select>
+                </Field>
+
+                {selClassOptions.arcaneBondType === 'bonded_item' && (
+                  <>
+                    <Field label="Item Type">
+                      <select
+                        className="field"
+                        value={selClassOptions.bondedItemKind ?? ''}
+                        onChange={e => setSelClassOptions(prev => ({
+                          ...prev,
+                          bondedItemKind: e.target.value || null,
+                        }))}
+                      >
+                        <option value="">— Choose item type —</option>
+                        {BONDED_ITEM_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Item Name (optional)">
+                      <input
+                        className="field"
+                        placeholder="e.g. Valeron's Ring"
+                        value={selClassOptions.bondedItemName ?? ''}
+                        onChange={e => setSelClassOptions(prev => ({
+                          ...prev,
+                          bondedItemName: e.target.value || null,
+                        }))}
+                      />
+                    </Field>
+                  </>
+                )}
+
+                {selClassOptions.arcaneBondType === 'familiar' && (
+                  <>
+                    <Field label="Familiar Species">
+                      <select
+                        className="field"
+                        value={selClassOptions.familiarKind ?? ''}
+                        onChange={e => setSelClassOptions(prev => ({
+                          ...prev,
+                          familiarKind: e.target.value || null,
+                        }))}
+                      >
+                        <option value="">— Choose species —</option>
+                        {FAMILIAR_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Familiar Name (optional)">
+                      <input
+                        className="field"
+                        placeholder="e.g. Mister Whiskers"
+                        value={selClassOptions.familiarName ?? ''}
+                        onChange={e => setSelClassOptions(prev => ({
+                          ...prev,
+                          familiarName: e.target.value || null,
+                        }))}
+                      />
+                    </Field>
+                  </>
+                )}
+              </>
+            )}
           </div>
         )}
 

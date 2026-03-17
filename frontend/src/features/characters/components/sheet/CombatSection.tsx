@@ -7,6 +7,7 @@ import { useCharacterSheet }    from '../../hooks/useCharacterSheet'
 import { useReferenceClasses }  from '../../hooks/useReferenceClasses'
 import { formatModifier }       from '@/lib/utils/format.utils'
 import { EFFECT_PRESETS }       from '../../constants/effectPresets'
+import { FamiliarCombatSection } from './FamiliarCombatSection'
 import type {
   ActiveEffect, EffectTarget, EffectType, EffectModifier,
   ArmorClass, HitPoints, SpellSection, Spell,
@@ -735,6 +736,9 @@ export function CombatSection() {
           <AddEffectForm onAdd={addCustomEffect} onClose={() => setShowAddForm(false)} />
         )}
       </SectionPanel>
+
+      {/* ═══ Familiar (Wizard only — visible when arcaneBondType = 'familiar') */}
+      <FamiliarCombatSection />
 
     </div>
   )

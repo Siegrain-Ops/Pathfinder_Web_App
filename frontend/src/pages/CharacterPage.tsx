@@ -17,6 +17,7 @@ import { InventorySection }     from '@/features/characters/components/sheet/Inv
 import { NotesSection }         from '@/features/characters/components/sheet/NotesSection'
 import { LevelUpSection }       from '@/features/characters/components/sheet/LevelUpSection'
 import { DiceRollerSection }   from '@/features/characters/components/sheet/DiceRollerSection'
+import { ArcaneBondSection }   from '@/features/characters/components/sheet/ArcaneBondSection'
 
 export function CharacterPage() {
   const { id }        = useParams<{ id: string }>()
@@ -66,29 +67,36 @@ export function CharacterPage() {
 
   if (!active) return null
 
+  const hasArcaneBond =
+    active.data.className.toLowerCase() === 'wizard' &&
+    (active.data.classOptions?.arcaneBondType === 'bonded_item' ||
+     active.data.classOptions?.arcaneBondType === 'familiar')
+  const hiddenTabs: SheetTab[] = hasArcaneBond ? [] : ['arcane_bond']
+
   return (
     <div className="flex flex-col h-full">
       {/* Sticky character header */}
       <div className="sticky top-0 z-20">
         <CharacterSheetHeader />
-        <SheetTabs active={tab} onChange={setTab} />
+        <SheetTabs active={tab} onChange={setTab} hiddenTabs={hiddenTabs} />
       </div>
 
       {/* Section content */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-          <TabPanel active={tab} id="overview">   <OverviewSection />   </TabPanel>
-          <TabPanel active={tab} id="stats">      <StatsSection />      </TabPanel>
-          <TabPanel active={tab} id="combat">     <CombatSection />     </TabPanel>
-          <TabPanel active={tab} id="saves">      <SavesSection />      </TabPanel>
-          <TabPanel active={tab} id="skills">     <SkillsSection />     </TabPanel>
-          <TabPanel active={tab} id="feats">      <FeatsSection />      </TabPanel>
-          <TabPanel active={tab} id="abilities">  <AbilitiesSection />  </TabPanel>
-          <TabPanel active={tab} id="spells">     <SpellsSection />     </TabPanel>
-          <TabPanel active={tab} id="inventory">  <InventorySection />  </TabPanel>
-          <TabPanel active={tab} id="notes">      <NotesSection />        </TabPanel>
-          <TabPanel active={tab} id="dice">       <DiceRollerSection />   </TabPanel>
-          <TabPanel active={tab} id="levelup">   <LevelUpSection />      </TabPanel>
+          <TabPanel active={tab} id="overview">     <OverviewSection />     </TabPanel>
+          <TabPanel active={tab} id="stats">        <StatsSection />        </TabPanel>
+          <TabPanel active={tab} id="combat">       <CombatSection />       </TabPanel>
+          <TabPanel active={tab} id="saves">        <SavesSection />        </TabPanel>
+          <TabPanel active={tab} id="skills">       <SkillsSection />       </TabPanel>
+          <TabPanel active={tab} id="feats">        <FeatsSection />        </TabPanel>
+          <TabPanel active={tab} id="abilities">    <AbilitiesSection />    </TabPanel>
+          <TabPanel active={tab} id="spells">       <SpellsSection />       </TabPanel>
+          <TabPanel active={tab} id="arcane_bond">  <ArcaneBondSection />   </TabPanel>
+          <TabPanel active={tab} id="inventory">    <InventorySection />    </TabPanel>
+          <TabPanel active={tab} id="notes">        <NotesSection />        </TabPanel>
+          <TabPanel active={tab} id="dice">         <DiceRollerSection />   </TabPanel>
+          <TabPanel active={tab} id="levelup">      <LevelUpSection />      </TabPanel>
         </div>
       </div>
     </div>

@@ -21,7 +21,7 @@ export type SizeCategory =
   | 'Medium' | 'Large' | 'Huge' | 'Gargantuan' | 'Colossal'
 
 /**
- * Structured class-option selections (archetype, bloodline, mystery, domains).
+ * Structured class-option selections (archetype, bloodline, mystery, domains, arcane bond).
  * All fields are optional for backward-compatibility with existing characters.
  */
 export interface ClassOptions {
@@ -37,6 +37,56 @@ export interface ClassOptions {
   /** Domain selections — up to 2 for Cleric, 1 for Inquisitor/Druid */
   domainIds?:     string[]
   domainNames?:   string[]
+  /**
+   * Arcane Bond — relevant for Wizard.
+   * A wizard chooses either a bonded item or a familiar at character creation.
+   */
+  arcaneBondType?:      'bonded_item' | 'familiar' | null
+  /** Kind of bonded object chosen (e.g. 'Ring', 'Staff', 'Wand', …). */
+  bondedItemKind?:      string | null
+  /** Optional player-assigned name for the item (e.g. "Valeron's Staff"). */
+  bondedItemName?:      string | null
+  /** Freeform notes about the item — appearance, enchantments, history. */
+  bondedItemNotes?:     string | null
+  /**
+   * Daily tracker: whether the wizard has already used the bonded item's
+   * once-per-day free spell ability. Reset each in-game day.
+   */
+  bondedItemUsedToday?: boolean
+  /** Familiar — relevant when arcaneBondType === 'familiar'. */
+  /** Species/kind of familiar (e.g. 'Cat', 'Raven', 'Owl', …). */
+  familiarKind?:        string | null
+  /** Player-assigned name for the familiar (e.g. "Mister Whiskers"). */
+  familiarName?:        string | null
+  /** Freeform notes about the familiar — appearance, personality, history. */
+  familiarNotes?:       string | null
+  /** Combat stats for the familiar — only relevant when arcaneBondType === 'familiar'. */
+  familiarCombat?:      FamiliarCombat
+}
+
+/** Familiar status tracker values. */
+export type FamiliarStatus = 'active' | 'absent' | 'unconscious' | 'dead'
+
+/**
+ * Combat-relevant stats for a wizard's familiar.
+ * All fields are manually set — familiar stats depend on species and master
+ * level, so we do not calculate them automatically.
+ */
+export interface FamiliarCombat {
+  currentHp:    number
+  maxHp:        number
+  ac:           number
+  touchAc:      number
+  flatFootedAc: number
+  initiative:   number
+  /** Speed in feet */
+  speed:        number
+  /** Total Perception check bonus */
+  perception:   number
+  /** Current status of the familiar */
+  status:       FamiliarStatus
+  /** Quick combat notes */
+  notes:        string
 }
 
 /**

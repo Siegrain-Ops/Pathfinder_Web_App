@@ -15,7 +15,10 @@ import { ALIGNMENTS, COMMON_CLASSES, COMMON_RACES, SIZE_CATEGORIES } from '@/lib
 const BLOODLINE_CLASSES  = ['sorcerer', 'bloodrager']
 const DOMAIN_CLASSES     = ['cleric', 'druid', 'inquisitor']
 const MYSTERY_CLASSES    = ['oracle']
+const WIZARD_CLASSES     = ['wizard']
 const TWO_DOMAIN_CLASSES = ['cleric']
+const BONDED_ITEM_KINDS  = ['Amulet', 'Ring', 'Staff', 'Wand', 'Sword', 'Dagger', 'Axe', 'Bow', 'Other'] as const
+const FAMILIAR_KINDS     = ['Bat', 'Cat', 'Fox', 'Hawk', 'Lizard', 'Monkey', 'Owl', 'Rat', 'Raven', 'Snake', 'Toad', 'Weasel', 'Other'] as const
 function classKey(n: string) { return n.toLowerCase() }
 function domainCount(cls: string) { return TWO_DOMAIN_CLASSES.includes(classKey(cls)) ? 2 : 1 }
 
@@ -175,7 +178,8 @@ export function OverviewSection() {
           const showBloodline  = BLOODLINE_CLASSES.includes(classKey(d.className)) && bloodlines.length > 0
           const showMystery    = MYSTERY_CLASSES.includes(classKey(d.className))   && mysteries.length > 0
           const showDomains    = DOMAIN_CLASSES.includes(classKey(d.className))    && domains.length   > 0
-          if (!showArchetypes && !showBloodline && !showMystery && !showDomains) return null
+          const showArcaneBond = WIZARD_CLASSES.includes(classKey(d.className))
+          if (!showArchetypes && !showBloodline && !showMystery && !showDomains && !showArcaneBond) return null
           const nDomains = domainCount(d.className)
 
           function patchOptions(patch: Partial<ClassOptions>) {
@@ -264,6 +268,93 @@ export function OverviewSection() {
                 ))}
 
               </div>
+
+              {/* ── Arcane Bond (Wizard only) ────────────────────── */}
+              {showArcaneBond && (
+                <div className="flex flex-col gap-3 pt-1">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500 whitespace-nowrap">
+                      Arcane Bond
+                    </span>
+                    <div className="flex-1 h-px bg-stone-700/50" />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <FormField label="Bond Type">
+                      <select
+                        className="field"
+                        disabled={isLocked}
+                        value={co.arcaneBondType ?? ''}
+                        onChange={e => {
+                          const val = e.target.value
+                          patchOptions({
+                            arcaneBondType: val === 'bonded_item' || val === 'familiar' ? val : null,
+                            // Clear bond-specific fields when switching type
+                            bondedItemKind: val === 'bonded_item' ? co.bondedItemKind : null,
+                            bondedItemName: val === 'bonded_item' ? co.bondedItemName : null,
+                            familiarKind:   val === 'familiar'    ? co.familiarKind   : null,
+                            familiarName:   val === 'familiar'    ? co.familiarName   : null,
+                            familiarNotes:  val === 'familiar'    ? co.familiarNotes  : null,
+                          })
+                        }}
+                      >
+                        <option value="">— Not set —</option>
+                        <option value="bonded_item">Bonded Item</option>
+                        <option value="familiar">Familiar</option>
+                      </select>
+                    </FormField>
+
+                    {co.arcaneBondType === 'bonded_item' && (<>
+                      <FormField label="Item Type">
+                        <select
+                          className="field"
+                          disabled={isLocked}
+                          value={co.bondedItemKind ?? ''}
+                          onChange={e => patchOptions({ bondedItemKind: e.target.value || null })}
+                        >
+                          <option value="">— Choose type —</option>
+                          {BONDED_ITEM_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+                        </select>
+                      </FormField>
+
+                      <FormField label="Item Name (optional)">
+                        <input
+                          className="field"
+                          placeholder="e.g. Valeron's Ring"
+                          disabled={isLocked}
+                          value={co.bondedItemName ?? ''}
+                          onChange={e => patchOptions({ bondedItemName: e.target.value || null })}
+                        />
+                      </FormField>
+                    </>)}
+
+                    {co.arcaneBondType === 'familiar' && (<>
+                      <FormField label="Familiar Species">
+                        <select
+                          className="field"
+                          disabled={isLocked}
+                          value={co.familiarKind ?? ''}
+                          onChange={e => patchOptions({ familiarKind: e.target.value || null })}
+                        >
+                          <option value="">— Choose species —</option>
+                          {FAMILIAR_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+                        </select>
+                      </FormField>
+
+                      <FormField label="Familiar Name (optional)">
+                        <input
+                          className="field"
+                          placeholder="e.g. Mister Whiskers"
+                          disabled={isLocked}
+                          value={co.familiarName ?? ''}
+                          onChange={e => patchOptions({ familiarName: e.target.value || null })}
+                        />
+                      </FormField>
+                    </>)}
+                  </div>
+                </div>
+              )}
+
             </div>
           )
         })()}
