@@ -23,8 +23,25 @@ const PORT = process.env.PORT ?? 3000
 const HOST = '0.0.0.0'
 
 // ── Global middleware ──────────────────────────────────────────────────────
+
+// Build the list of CORS-allowed origins once at startup.
+// EXTRA_ORIGINS = comma-separated additional origins, e.g.:
+//   https://localhost   ← Capacitor Android WebView
+// Set this in Railway env vars for the production backend.
+const ALLOWED_ORIGINS: ReadonlySet<string> = new Set([
+  process.env.FRONTEND_URL ?? process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+  ...((process.env.EXTRA_ORIGINS ?? '').split(',').map(s => s.trim()).filter(Boolean)),
+])
+
+console.log('[cors] allowed origins:', [...ALLOWED_ORIGINS])
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL ?? process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (server-to-server, curl, Capacitor native layer)
+    if (!origin) return callback(null, true)
+    if (ALLOWED_ORIGINS.has(origin)) return callback(null, true)
+    callback(new Error(`CORS: origin '${origin}' not allowed`))
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
 }))

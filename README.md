@@ -1,8 +1,8 @@
-# Pathfinder Character Manager
+# PathLegends
 
 A full-stack Pathfinder 1e character sheet manager with a local reference archive for spells and feats.
 
-**Stack:** React · TypeScript · Vite · TailwindCSS · Zustand · Express · Prisma · MySQL · Docker
+**Stack:** React · TypeScript · Vite · TailwindCSS · Zustand · Express · Prisma · MySQL · Docker · Capacitor (Android)
 
 **Current version:** `0.1.0`
 The canonical project version is stored in the root [`VERSION`](./VERSION) file.
@@ -33,12 +33,14 @@ The canonical project version is stored in the root [`VERSION`](./VERSION) file.
 
 ## Requirements
 
-| Tool      | Minimum |
-|-----------|---------|
-| Docker    | 24+     |
-| Docker Compose | v2+ |
-| Node.js   | 20+ *(only if running without Docker)* |
-| npm       | 9+      |
+| Tool      | Minimum | Purpose |
+|-----------|---------|---------|
+| Docker    | 24+     | Full local stack |
+| Docker Compose | v2+ | Full local stack |
+| Node.js   | 20+ | Without Docker / Android build |
+| npm       | 9+  | Without Docker / Android build |
+| Android Studio | Latest | Android development |
+| JDK       | 17+     | Android build (bundled with Android Studio) |
 
 ---
 
@@ -353,12 +355,16 @@ curl -X POST http://localhost:3000/api/characters/00000000-0000-0000-0000-000000
 
 ### Frontend (`cd frontend`)
 
-| Script               | Description                      |
-|----------------------|----------------------------------|
-| `npm run dev`        | Start Vite dev server            |
-| `npm run build`      | Production build to `dist/`      |
-| `npm run preview`    | Preview production build locally |
-| `npm run type-check` | TypeScript check without emitting|
+| Script               | Description                                       |
+|----------------------|---------------------------------------------------|
+| `npm run dev`        | Start Vite dev server                             |
+| `npm run build`      | Production build to `dist/` (web)                 |
+| `npm run preview`    | Preview production build locally                  |
+| `npm run type-check` | TypeScript check without emitting                 |
+| `npm run build:mobile` | Build with `--mode mobile` (loads `.env.mobile`)  |
+| `npm run cap:sync`   | Build for mobile + sync web assets into Android   |
+| `npm run cap:open`   | Open the Android project in Android Studio        |
+| `npm run cap:run`    | Build + sync + run on connected device/emulator   |
 
 ---
 
@@ -401,6 +407,73 @@ All responses use the envelope: `{ success: boolean, data: T, error?: string }`
 | GET | `/api/reference/spells/:id` | — | Get spell detail |
 | GET | `/api/reference/feats` | `q`, `type`, `limit`, `offset` | Search feats |
 | GET | `/api/reference/feats/:id` | — | Get feat detail |
+
+---
+
+## Android (Capacitor)
+
+The frontend can be packaged as a native Android app via [Capacitor](https://capacitorjs.com).
+The web frontend is the single source of truth — Capacitor wraps it in a WebView.
+
+### Prerequisites
+
+- Android Studio installed with at least one SDK platform (API 24+)
+- `ANDROID_HOME` / `ANDROID_SDK_ROOT` environment variable set, or configured in Android Studio
+
+### First-time setup
+
+```bash
+cd frontend
+
+# 1. Configure the mobile API URL
+cp .env.mobile.example .env.mobile
+# Edit .env.mobile — set VITE_API_BASE_URL to your production backend URL
+# e.g. VITE_API_BASE_URL=https://pathlegends-backend.up.railway.app
+
+# 2. Build + sync (creates/updates frontend/android/)
+npm run cap:sync
+
+# 3. Open in Android Studio
+npm run cap:open
+```
+
+> **Railway backend — required env var:**
+> Add `EXTRA_ORIGINS=https://localhost` to the backend service's environment variables
+> in Railway. This whitelists the Capacitor Android WebView origin so CORS and cookies work.
+
+In Android Studio: **Run ▶** to deploy to a device or emulator.
+
+### Ongoing workflow
+
+```bash
+# After any frontend code change:
+npm run cap:sync     # rebuild + sync assets
+
+# Then in Android Studio click Run again, or:
+npm run cap:run      # build + sync + run directly (device must be connected)
+```
+
+### Key configuration files
+
+| File | Purpose |
+|---|---|
+| `frontend/capacitor.config.ts` | App ID, name, webDir, Android scheme |
+| `frontend/.env.mobile` | `VITE_API_BASE_URL` for mobile builds (git-ignored) |
+| `frontend/android/` | Generated Android project (committed to repo) |
+
+### Known limitations & next steps
+
+| Topic | Status | Notes |
+|---|---|---|
+| **Cookie auth** | ✅ Works | `androidScheme: 'https'` + `SameSite=None; Secure` on backend |
+| **API URL** | ⚙️ Manual | Set `VITE_API_BASE_URL` in `.env.mobile` before building |
+| **Error messages** | ✅ Fixed | Axios interceptor surfaces backend messages (not generic HTTP strings) |
+| **Backend CORS** | ✅ Configured | `EXTRA_ORIGINS=https://localhost` in Railway backend env |
+| **Session persistence** | ✅ Works | `maxAge: 12h` cookie persists across app restarts in Android CookieManager |
+| **Deep links** (`/verify-email`, `/reset-password`) | ⚠️ Browser only | Email links open in the device browser — works fine for now |
+| **Mid-session 401** | ⚠️ Shows error | If session expires while app is open, next request shows "Session expired"; app redirects on next boot |
+| **Icons / splash** | ⏳ Not done | Use `@capacitor/assets` to generate from a source image |
+| **Signed APK / Play Store** | ⏳ Not done | Configure a keystore in Android Studio when ready |
 
 ---
 

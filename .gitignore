@@ -10,6 +10,13 @@ backend/dist/
 # Environment files
 .env
 backend/.env
+frontend/.env.mobile
+
+# Capacitor — Android build artifacts (keep the project, ignore build output)
+frontend/android/.gradle/
+frontend/android/app/build/
+frontend/android/build/
+frontend/android/local.properties
 
 # Database
 backend/prisma/dev.db
