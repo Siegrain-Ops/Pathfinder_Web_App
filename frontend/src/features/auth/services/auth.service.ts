@@ -14,15 +14,15 @@ export interface AuthUser {
 const BASE = '/api/auth'
 
 export const authService = {
-  async register(email: string, password: string, displayName: string): Promise<AuthUser> {
-    const res = await api.post<ApiResponse<AuthUser>>(`${BASE}/register`, { email, password, displayName })
-    if (!res.data.success) throw new Error(res.data.error)
+  async register(email: string, password: string, displayName: string): Promise<{ message: string }> {
+    const res = await api.post<ApiResponse<{ message: string }>>(`${BASE}/register`, { email, password, displayName })
+    if (!res.data.success) throw new Error((res.data as { error?: string }).error ?? 'Registration failed')
     return res.data.data
   },
 
   async login(email: string, password: string): Promise<AuthUser> {
     const res = await api.post<ApiResponse<AuthUser>>(`${BASE}/login`, { email, password })
-    if (!res.data.success) throw new Error(res.data.error)
+    if (!res.data.success) throw new Error((res.data as { error?: string }).error ?? 'Login failed')
     return res.data.data
   },
 
@@ -38,5 +38,29 @@ export const authService = {
     } catch {
       return null
     }
+  },
+
+  async verifyEmail(token: string): Promise<{ message: string }> {
+    const res = await api.post<ApiResponse<{ message: string }>>(`${BASE}/verify-email`, { token })
+    if (!res.data.success) throw new Error((res.data as { error?: string }).error ?? 'Verification failed')
+    return res.data.data
+  },
+
+  async resendVerification(email: string): Promise<{ message: string }> {
+    const res = await api.post<ApiResponse<{ message: string }>>(`${BASE}/resend-verification`, { email })
+    if (!res.data.success) throw new Error((res.data as { error?: string }).error ?? 'Failed to resend email')
+    return res.data.data
+  },
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const res = await api.post<ApiResponse<{ message: string }>>(`${BASE}/forgot-password`, { email })
+    if (!res.data.success) throw new Error((res.data as { error?: string }).error ?? 'Request failed')
+    return res.data.data
+  },
+
+  async resetPassword(token: string, password: string): Promise<{ message: string }> {
+    const res = await api.post<ApiResponse<{ message: string }>>(`${BASE}/reset-password`, { token, password })
+    if (!res.data.success) throw new Error((res.data as { error?: string }).error ?? 'Reset failed')
+    return res.data.data
   },
 }

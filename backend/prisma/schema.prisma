@@ -11,14 +11,17 @@ datasource db {
 // User
 // Application user account.
 model User {
-  id           String      @id @default(cuid())
-  email        String      @unique
-  passwordHash String
-  displayName  String
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  characters   Character[]
-  sessions     Session[]
+  id              String      @id @default(cuid())
+  email           String      @unique
+  passwordHash    String
+  displayName     String
+  emailVerifiedAt DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  characters      Character[]
+  sessions        Session[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
 }
 
 // Session
@@ -29,6 +32,33 @@ model Session {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+// EmailVerificationToken
+// One-time token sent to the user's inbox to confirm their address.
+// tokenHash stores SHA-256(plaintext token) — plaintext only ever lives in the email.
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// PasswordResetToken
+// One-time token sent to the user's inbox to authorize a password change.
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // Character

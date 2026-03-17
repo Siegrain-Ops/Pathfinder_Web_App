@@ -44,12 +44,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  // ── Register ───────────────────────────────────────────────────────────
+  // ── Register — does NOT log the user in; email verification is required ─
   register: async (email, password, displayName) => {
     set({ isLoading: true })
     try {
-      const user = await authService.register(email, password, displayName)
-      set({ user, isLoading: false })
+      await authService.register(email, password, displayName)
+      set({ isLoading: false })
     } catch (err) {
       set({ isLoading: false })
       throw err
