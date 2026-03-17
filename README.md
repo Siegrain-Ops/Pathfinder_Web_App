@@ -4,23 +4,27 @@ A full-stack Pathfinder 1e character sheet manager with a local reference archiv
 
 **Stack:** React · TypeScript · Vite · TailwindCSS · Zustand · Express · Prisma · MySQL · Docker
 
+**Current version:** `0.1.0`
+The canonical project version is stored in the root [`VERSION`](./VERSION) file.
+
 ---
 
 ## Table of contents
 
 1. [Requirements](#requirements)
-2. [Project structure](#project-structure)
-3. [Run with Docker Compose](#run-with-docker-compose)
-4. [Run without Docker (local MySQL)](#run-without-docker-local-mysql)
-5. [Prisma migrations](#prisma-migrations)
-6. [Seed demo character](#seed-demo-character)
-7. [Import reference data](#import-reference-data)
-8. [Verify in Adminer](#verify-in-adminer)
-9. [Test character CRUD](#test-character-crud)
-10. [Test reference spell/feat search](#test-reference-spellsfeat-search)
-11. [All available scripts](#all-available-scripts)
-12. [Full API reference](#full-api-reference)
-13. [Architecture notes](#architecture-notes)
+2. [Versioning](#versioning)
+3. [Project structure](#project-structure)
+4. [Run with Docker Compose](#run-with-docker-compose)
+5. [Run without Docker (local MySQL)](#run-without-docker-local-mysql)
+6. [Prisma migrations](#prisma-migrations)
+7. [Seed demo character](#seed-demo-character)
+8. [Import reference data](#import-reference-data)
+9. [Verify in Adminer](#verify-in-adminer)
+10. [Test character CRUD](#test-character-crud)
+11. [Test reference spell/feat search](#test-reference-spellsfeat-search)
+12. [All available scripts](#all-available-scripts)
+13. [Full API reference](#full-api-reference)
+14. [Architecture notes](#architecture-notes)
 
 ---
 
@@ -35,7 +39,18 @@ A full-stack Pathfinder 1e character sheet manager with a local reference archiv
 
 ---
 
+## Versioning
+
+- The repository-wide application version is tracked in the root [`VERSION`](./VERSION) file.
+- Current version: `0.1.0`
+- The frontend and backend package manifests may have their own npm package versions, but the root `VERSION` file is the release/version reference for the software as a whole.
+- When bumping the app version, update `VERSION` first and then update any package metadata that should stay aligned.
+
+---
+
 ## Project structure
+
+The root `VERSION` file is the canonical source for the software version.
 
 ```
 Pathfinder-app/
