@@ -144,6 +144,8 @@ export function AbilitiesSection() {
           <div className="max-h-80 overflow-y-auto rounded border border-stone-700 bg-stone-950">
             {searchResults.map(result => {
               const alreadyAdded = characterData.abilities.some(ability => ability.name === result.name)
+              const sourceLabel   = getSourceLabel(result)
+              const badgeVariant  = getSourceBadgeVariant(result)
               return (
                 <button
                   key={`${result.kind}-${result.id}`}
@@ -152,18 +154,19 @@ export function AbilitiesSection() {
                   onClick={() => addAbilityFromReference(result)}
                   disabled={alreadyAdded}
                 >
-                  <span className="flex flex-col">
+                  <span className="flex flex-col min-w-0">
                     <span className="font-medium text-stone-200">{result.name}</span>
+                    {result.sourceOptionName && (
+                      <span className="text-[10px] text-stone-600 italic">{result.sourceOptionName}</span>
+                    )}
                     <span className="text-xs text-stone-500 line-clamp-2">
                       {result.description ?? result.frequencyText ?? 'No summary available'}
                     </span>
                   </span>
-                  <span className="flex items-center gap-2">
-                    <Badge variant={result.kind === 'talent' ? 'amber' : 'blue'}>
-                      {result.kind}
-                    </Badge>
-                    {result.category && (
-                      <span className="max-w-[12rem] truncate text-xs text-stone-500">{result.category}</span>
+                  <span className="flex flex-col items-end gap-1 shrink-0">
+                    <Badge variant={badgeVariant}>{sourceLabel}</Badge>
+                    {result.levelRequirement !== null && (
+                      <span className="text-[10px] text-stone-600">lv {result.levelRequirement}+</span>
                     )}
                     {alreadyAdded && <span className="text-xs text-stone-500">Added</span>}
                   </span>
@@ -315,6 +318,51 @@ function normalizeAbilityType(
   if (normalized === 'spell-like') return 'spell-like'
   if (normalized === 'supernatural') return 'supernatural'
   if (category === 'race' || category?.includes('racial')) return 'racial trait'
-  if (kind === 'talent' || category?.includes('order') || category?.includes('inquisition')) return 'class feature'
+  if (
+    kind === 'talent' ||
+    category === 'revelation' ||
+    category === 'discovery' ||
+    category === 'domain power' ||
+    category === 'bloodline power' ||
+    category?.includes('order') ||
+    category?.includes('inquisition')
+  ) return 'class feature'
   return 'other'
+}
+
+// ---------------------------------------------------------------------------
+// Search result display helpers
+// ---------------------------------------------------------------------------
+
+const SOURCE_LABEL: Record<string, string> = {
+  talent:           'talent',
+  ability:          'ability',
+  revelation:       'revelation',
+  discovery:        'discovery',
+  'domain power':   'domain power',
+  'bloodline power':'bloodline power',
+  race:             'racial trait',
+  class:            'class ability',
+  archetype:        'archetype ability',
+}
+
+function getSourceLabel(result: ReferenceAbilityResult): string {
+  if (result.kind === 'talent') {
+    return result.category ?? 'talent'
+  }
+  return SOURCE_LABEL[result.category ?? ''] ?? result.category ?? 'ability'
+}
+
+function getSourceBadgeVariant(result: ReferenceAbilityResult): 'amber' | 'blue' | 'purple' | 'default' {
+  if (result.kind === 'talent') return 'amber'
+  switch (result.category) {
+    case 'revelation':      return 'purple'
+    case 'bloodline power': return 'purple'
+    case 'discovery':       return 'blue'
+    case 'domain power':    return 'blue'
+    case 'class':           return 'blue'
+    case 'archetype':       return 'blue'
+    case 'race':            return 'default'
+    default:                return 'blue'
+  }
 }
