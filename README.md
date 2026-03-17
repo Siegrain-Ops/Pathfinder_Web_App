@@ -7,6 +7,9 @@ A full-stack Pathfinder 1e character sheet manager with a local reference archiv
 **Current version:** `0.1.0`
 The canonical project version is stored in the root [`VERSION`](./VERSION) file.
 
+**Disclaimer:** This is an unofficial fan-made Pathfinder 1e project. It is not affiliated with or endorsed by Paizo Publishing, LLC.
+**Attribution:** Parts of the local reference archive were imported from `d20pfsrd.com` and other Open Game Content sources. See [`LEGAL.md`](./LEGAL.md) and [`OGL-1.0a.txt`](./OGL-1.0a.txt).
+
 ---
 
 ## Table of contents
