@@ -7,6 +7,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/app/store/authStore'
 import { authService } from '@/features/auth/services/auth.service'
 import { Button } from '@/components/ui/Button'
+import { AuthBrand } from '@/components/ui/AuthBrand'
 
 export function LoginPage() {
   const { login, isLoading } = useAuthStore()
@@ -53,14 +54,7 @@ export function LoginPage() {
   return (
     <div className="min-h-screen bg-stone-900 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        {/* Brand */}
-        <div className="text-center mb-8">
-          <span className="text-amber-400 text-4xl">⚔</span>
-          <h1 className="font-display text-2xl font-bold text-stone-100 mt-2">
-            Pathfinder
-          </h1>
-          <p className="text-stone-400 text-sm mt-1">Character Manager</p>
-        </div>
+        <AuthBrand />
 
         {/* Card */}
         <div className="bg-stone-800 border border-stone-700 rounded-lg p-6">

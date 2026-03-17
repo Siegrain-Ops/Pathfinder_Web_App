@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { authService } from '@/features/auth/services/auth.service'
 import { Button } from '@/components/ui/Button'
+import { AuthBrand } from '@/components/ui/AuthBrand'
 
 export function ForgotPasswordPage() {
   const [email,     setEmail]     = useState('')
@@ -30,11 +31,7 @@ export function ForgotPasswordPage() {
   return (
     <div className="min-h-screen bg-stone-900 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <span className="text-amber-400 text-4xl">⚔</span>
-          <h1 className="font-display text-2xl font-bold text-stone-100 mt-2">Pathfinder</h1>
-          <p className="text-stone-400 text-sm mt-1">Character Manager</p>
-        </div>
+        <AuthBrand />
 
         <div className="bg-stone-800 border border-stone-700 rounded-lg p-6">
           {submitted ? (

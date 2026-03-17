@@ -69,7 +69,7 @@ export function DashboardPage() {
           description={
             search
               ? 'Try a different name, race, or class.'
-              : 'Create your first Pathfinder character to get started.'
+              : 'Create your first character and begin your legend.'
           }
           action={
             !search && (

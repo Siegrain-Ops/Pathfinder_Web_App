@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { authService } from '@/features/auth/services/auth.service'
+import { AuthBrand } from '@/components/ui/AuthBrand'
 
 type Status = 'loading' | 'success' | 'error'
 
@@ -35,11 +36,7 @@ export function VerifyEmailPage() {
   return (
     <div className="min-h-screen bg-stone-900 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <span className="text-amber-400 text-4xl">⚔</span>
-          <h1 className="font-display text-2xl font-bold text-stone-100 mt-2">Pathfinder</h1>
-          <p className="text-stone-400 text-sm mt-1">Character Manager</p>
-        </div>
+        <AuthBrand />
 
         <div className="bg-stone-800 border border-stone-700 rounded-lg p-6 text-center">
           {status === 'loading' && (
