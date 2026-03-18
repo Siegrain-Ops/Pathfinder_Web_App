@@ -74,7 +74,7 @@ export function CharacterSetupPage() {
   const { id }    = useParams<{ id: string }>()
   const navigate  = useNavigate()
 
-  const { loadCharacter, clearActive, isLoading, error, active } = useCharacterStore()
+  const { loadCharacter, clearActive, isLoading, error } = useCharacterStore()
   const { data, update, save, isSaving }  = useCharacterSheet()
   const { classes }                       = useReferenceClasses()
 
@@ -132,17 +132,19 @@ export function CharacterSetupPage() {
     )
   }
 
+  const d = data
+
   // ── Derived values ────────────────────────────────────────────────────────
-  const levelRow   = refClass?.progressionTable?.find(r => r.level === data.level) ?? null
+  const levelRow   = refClass?.progressionTable?.find(r => r.level === d.level) ?? null
   const hitDie     = refClass?.hitDie ?? 8
   const isCaster   = isCasterSpellcastingType(refClass?.spellcastingType)
 
   // CON modifier: after applying stats, use character data; before, use local
   const conBase  = statsApplied
-    ? (data.stats.constitution.base + (data.stats.constitution.racialBonus ?? 0))
+    ? (d.stats.constitution.base + (d.stats.constitution.racialBonus ?? 0))
     : localStats.constitution
   const conMod   = abilityMod(conBase)
-  const fcbHpBonus = data.favoredClassBonus === 'hp' ? 1 : 0
+  const fcbHpBonus = d.favoredClassBonus === 'hp' ? 1 : 0
   const initHp   = Math.max(1, hitDie + conMod) + fcbHpBonus
 
   const newBab   = levelRow?.baseAttackBonus ?? null
@@ -150,7 +152,7 @@ export function CharacterSetupPage() {
   const newRef   = levelRow?.refSave         ?? null
   const newWill  = levelRow?.willSave        ?? null
 
-  const newFeatures = refClass?.classFeatures?.filter(f => f.level === data.level) ?? []
+  const newFeatures = refClass?.classFeatures?.filter(f => f.level === d.level) ?? []
   const newSpells   = levelRow?.spellsPerDay ?? null
 
   const activeSteps: StepId[] = (
@@ -174,12 +176,12 @@ export function CharacterSetupPage() {
   function applyStats() {
     update({
       stats: {
-        strength:     { ...data.stats.strength,     base: localStats.strength     },
-        dexterity:    { ...data.stats.dexterity,    base: localStats.dexterity    },
-        constitution: { ...data.stats.constitution, base: localStats.constitution },
-        intelligence: { ...data.stats.intelligence, base: localStats.intelligence },
-        wisdom:       { ...data.stats.wisdom,       base: localStats.wisdom       },
-        charisma:     { ...data.stats.charisma,     base: localStats.charisma     },
+        strength:     { ...d.stats.strength,     base: localStats.strength     },
+        dexterity:    { ...d.stats.dexterity,    base: localStats.dexterity    },
+        constitution: { ...d.stats.constitution, base: localStats.constitution },
+        intelligence: { ...d.stats.intelligence, base: localStats.intelligence },
+        wisdom:       { ...d.stats.wisdom,       base: localStats.wisdom       },
+        charisma:     { ...d.stats.charisma,     base: localStats.charisma     },
       },
     })
     setStatsApplied(true)
@@ -188,7 +190,7 @@ export function CharacterSetupPage() {
   function applyHp() {
     update({
       combat: {
-        ...data.combat,
+        ...d.combat,
         hitPoints: { max: initHp, current: initHp, temp: 0 },
       },
     })
@@ -197,7 +199,7 @@ export function CharacterSetupPage() {
 
   function applyBab() {
     if (newBab === null) return
-    update({ combat: { ...data.combat, baseAttackBonus: newBab } })
+    update({ combat: { ...d.combat, baseAttackBonus: newBab } })
     setBabApplied(true)
   }
 
@@ -205,9 +207,9 @@ export function CharacterSetupPage() {
     if (newFort === null && newRef === null && newWill === null) return
     update({
       saves: {
-        fortitude: { ...data.saves.fortitude, base: newFort ?? data.saves.fortitude.base },
-        reflex:    { ...data.saves.reflex,    base: newRef  ?? data.saves.reflex.base    },
-        will:      { ...data.saves.will,      base: newWill ?? data.saves.will.base      },
+        fortitude: { ...d.saves.fortitude, base: newFort ?? d.saves.fortitude.base },
+        reflex:    { ...d.saves.reflex,    base: newRef  ?? d.saves.reflex.base    },
+        will:      { ...d.saves.will,      base: newWill ?? d.saves.will.base      },
       },
     })
     setSavesApplied(true)
@@ -235,26 +237,26 @@ export function CharacterSetupPage() {
             Initial Setup
           </h1>
           <p className="text-stone-400 text-sm">
-            Initialize your new Level {data.level} {data.className}. Complete each step to prepare your character sheet.
+            Initialize your new Level {d.level} {d.className}. Complete each step to prepare your character sheet.
           </p>
         </div>
 
         {/* Character identity card */}
         <div className="rounded-xl border border-amber-800/30 bg-amber-950/10 px-5 py-4">
           <div className="flex flex-wrap items-center gap-6">
-            <IdentityChip label="Character" value={data.name} />
+            <IdentityChip label="Character" value={d.name} />
             <IdentityChip
               label="Class"
-              value={data.className}
+              value={d.className}
               sub={refClass ? `d${hitDie}` : undefined}
             />
-            <IdentityChip label="Race"  value={data.race} />
-            <IdentityChip label="Level" value={String(data.level)} highlight />
-            <IdentityChip label="FCB"   value={data.favoredClassBonus === 'hp' ? '+1 HP/lvl' : '+1 Rank/lvl'} />
+            <IdentityChip label="Race"  value={d.race} />
+            <IdentityChip label="Level" value={String(d.level)} highlight />
+            <IdentityChip label="FCB"   value={d.favoredClassBonus === 'hp' ? '+1 HP/lvl' : '+1 Rank/lvl'} />
           </div>
-          {!refClass && data.className && (
+          {!refClass && d.className && (
             <p className="mt-3 text-xs text-amber-500/70 italic">
-              Class "{data.className}" not found in the reference archive — some steps require manual entry in the sheet.
+              Class "{d.className}" not found in the reference archive — some steps require manual entry in the sheet.
             </p>
           )}
         </div>
@@ -292,11 +294,11 @@ export function CharacterSetupPage() {
               )}
               {step === 'bab_saves' && (
                 <BabSavesSetupStep
-                  currentBab={data.combat.baseAttackBonus}
+                  currentBab={d.combat.baseAttackBonus}
                   newBab={newBab}
-                  currentFort={data.saves.fortitude.base}
-                  currentRef={data.saves.reflex.base}
-                  currentWill={data.saves.will.base}
+                  currentFort={d.saves.fortitude.base}
+                  currentRef={d.saves.reflex.base}
+                  currentWill={d.saves.will.base}
                   newFort={newFort}
                   newRef={newRef}
                   newWill={newWill}
@@ -309,19 +311,19 @@ export function CharacterSetupPage() {
               {step === 'features' && (
                 <FeaturesSetupStep
                   features={newFeatures}
-                  level={data.level}
-                  className={data.className}
+                  level={d.level}
+                  className={d.className}
                 />
               )}
               {step === 'feat' && (
-                <FeatSetupStep level={data.level} />
+                <FeatSetupStep level={d.level} />
               )}
               {step === 'spells' && (
                 <SpellsSetupStep
                   spellsPerDay={newSpells}
                   castingType={refClass?.spellcastingType ?? null}
                   castingStat={refClass?.castingStat ?? null}
-                  level={data.level}
+                  level={d.level}
                 />
               )}
             </SetupStep>
