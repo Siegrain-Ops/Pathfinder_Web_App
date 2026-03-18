@@ -30,7 +30,12 @@ export function recomputeCharacter(data: CharacterData): CharacterData {
   const stats = calcStats(data.stats)
 
   // 2 ── Combat
-  const combat = calcCombat(data.combat, stats)
+  const rawCombat = calcCombat(data.combat, stats)
+  // Clamp current HP to max — enforced after every update so no path can
+  // leave current > max (e.g. when the user lowers max HP in the Combat tab).
+  const combat = rawCombat.hitPoints.current > rawCombat.hitPoints.max
+    ? { ...rawCombat, hitPoints: { ...rawCombat.hitPoints, current: rawCombat.hitPoints.max } }
+    : rawCombat
 
   // 3 ── Saving Throws
   const saves = calcSavingThrows(data.saves, stats)

@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { SectionPanel }        from './SectionPanel'
 import { Button }              from '@/components/ui/Button'
 import { Badge }               from '@/components/ui/Badge'
 import { useCharacterSheet }   from '../../hooks/useCharacterSheet'
+import { useReferenceClasses } from '../../hooks/useReferenceClasses'
 import { defaultAbility }      from '@/types/feat.types'
 import { referenceAbilityService } from '../../services/reference-ability.service'
+import { clsx }                from 'clsx'
 import type { ReferenceAbilityResult, SpecialAbility } from '@/types'
 
 const TYPE_BADGE: Record<SpecialAbility['type'], 'amber' | 'blue' | 'purple' | 'default'> = {
@@ -35,6 +37,20 @@ export function AbilitiesSection() {
 
   if (!data) return null
   const characterData = data
+
+  function addAbilityFromClassFeature(name: string, description: string) {
+    const ability: SpecialAbility = {
+      id:            crypto.randomUUID(),
+      name,
+      type:          'class feature',
+      usesPerDay:    null,
+      usesRemaining: null,
+      description,
+      locked:        true,
+    }
+    update({ abilities: [...characterData.abilities, ability] })
+    setExpandedId(ability.id)
+  }
 
   useEffect(() => {
     const query = searchTerm.trim()
@@ -121,6 +137,14 @@ export function AbilitiesSection() {
       title={`Special Abilities (${characterData.abilities.length})`}
       action={<Button size="sm" onClick={addAbility}>+ Add Ability</Button>}
     >
+      {/* ── Class Features reference panel ──────────────────────────────── */}
+      <ClassFeaturesPanel
+        className={characterData.className}
+        characterLevel={characterData.level}
+        existingAbilityNames={characterData.abilities.map(a => a.name)}
+        onAdd={addAbilityFromClassFeature}
+      />
+
       <div className="mb-4 flex flex-col gap-2">
         <label className="flex flex-col gap-1">
           <span className="text-xs text-stone-500">Search abilities in DB</span>
@@ -285,6 +309,141 @@ export function AbilitiesSection() {
         })}
       </div>
     </SectionPanel>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Class Features reference panel
+// ---------------------------------------------------------------------------
+
+interface ClassFeaturesPanelProps {
+  className:            string
+  characterLevel:       number
+  existingAbilityNames: string[]
+  onAdd:                (name: string, description: string) => void
+}
+
+function ClassFeaturesPanel({
+  className, characterLevel, existingAbilityNames, onAdd,
+}: ClassFeaturesPanelProps) {
+  const { classes, isLoading } = useReferenceClasses()
+  const [open, setOpen]         = useState(false)
+  const [expandedName, setExpandedName] = useState<string | null>(null)
+
+  const refClass = useMemo(
+    () => classes.find(c => c.name.toLowerCase() === className.toLowerCase()) ?? null,
+    [classes, className],
+  )
+
+  // Features available at or below the character's current level
+  const features = useMemo(() => {
+    if (!refClass?.classFeatures) return []
+    return refClass.classFeatures
+      .filter(f => f.level === undefined || f.level === null || f.level <= characterLevel)
+      .slice()
+      .sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
+  }, [refClass, characterLevel])
+
+  if (!className) return null
+
+  return (
+    <div className="mb-4 rounded-lg border border-stone-700/50 bg-stone-900/40">
+      {/* Panel header */}
+      <button
+        className="flex w-full items-center justify-between px-3 py-2.5 text-left"
+        onClick={() => setOpen(o => !o)}
+      >
+        <span className="flex items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">
+            Class Features
+          </span>
+          {isLoading ? (
+            <span className="text-[10px] text-stone-600 italic">loading…</span>
+          ) : !refClass ? (
+            <span className="text-[10px] text-amber-600/70 italic">
+              "{className}" not in reference archive
+            </span>
+          ) : (
+            <span className="rounded-full bg-stone-800 border border-stone-700/60 px-2 py-0.5 text-[10px] text-stone-400">
+              {features.length} up to lv {characterLevel}
+            </span>
+          )}
+        </span>
+        <span className="text-stone-600 text-xs">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {/* Feature list */}
+      {open && features.length > 0 && (
+        <div className="border-t border-stone-800/60 flex flex-col divide-y divide-stone-800/40">
+          {features.map(f => {
+            const alreadyAdded = existingAbilityNames.some(
+              n => n.toLowerCase() === f.name.toLowerCase(),
+            )
+            const isExpanded = expandedName === f.name
+
+            return (
+              <div key={f.name} className="px-3 py-2">
+                {/* Feature header row */}
+                <div className="flex items-start gap-2">
+                  {/* Level badge */}
+                  {f.level != null && (
+                    <span className="mt-0.5 shrink-0 rounded bg-stone-800 border border-stone-700/50 px-1.5 py-0.5 text-[10px] font-mono text-stone-500">
+                      lv {f.level}
+                    </span>
+                  )}
+
+                  {/* Name — clickable to expand description */}
+                  <button
+                    className="flex-1 text-left text-sm font-medium text-stone-200 hover:text-stone-100"
+                    onClick={() => setExpandedName(isExpanded ? null : f.name)}
+                  >
+                    {f.name}
+                  </button>
+
+                  {/* Add / Added */}
+                  {alreadyAdded ? (
+                    <span className="shrink-0 text-[10px] text-emerald-600/70 italic self-center">
+                      ✓ Added
+                    </span>
+                  ) : (
+                    <button
+                      className={clsx(
+                        'shrink-0 rounded border px-2 py-0.5 text-[10px] font-medium transition-colors',
+                        'border-stone-600/60 bg-stone-800/40 text-stone-400',
+                        'hover:border-amber-600/60 hover:bg-amber-950/20 hover:text-amber-300',
+                      )}
+                      onClick={() => onAdd(f.name, f.description)}
+                    >
+                      + Add
+                    </button>
+                  )}
+
+                  <button
+                    className="text-stone-600 text-[10px] shrink-0 self-center ml-1"
+                    onClick={() => setExpandedName(isExpanded ? null : f.name)}
+                  >
+                    {isExpanded ? '▲' : '▼'}
+                  </button>
+                </div>
+
+                {/* Description */}
+                {isExpanded && f.description && (
+                  <p className="mt-2 text-xs text-stone-400 leading-relaxed whitespace-pre-wrap pl-1">
+                    {f.description}
+                  </p>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {open && features.length === 0 && !isLoading && refClass && (
+        <p className="border-t border-stone-800/60 px-3 py-3 text-xs text-stone-500 italic">
+          No class features found for {className} up to level {characterLevel}.
+        </p>
+      )}
+    </div>
   )
 }
 

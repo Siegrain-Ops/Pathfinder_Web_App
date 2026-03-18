@@ -156,10 +156,10 @@ function timeAgo(ts: number): string {
 // Main component
 // ---------------------------------------------------------------------------
 export function DiceRollerSection() {
-  const [count,    setCount]    = useState(1)
-  const [sides,    setSides]    = useState<DieType>(20)
-  const [modifier, setModifier] = useState(0)
-  const [rollNote, setRollNote] = useState('')
+  const [count,       setCount]       = useState(1)
+  const [sides,       setSides]       = useState<DieType>(20)
+  const [modifierStr, setModifierStr] = useState('0')
+  const [rollNote,    setRollNote]    = useState('')
 
   const [history,    setHistory]    = useState<RollEntry[]>([])
   const [lastRoll,   setLastRoll]   = useState<RollEntry | null>(null)
@@ -191,8 +191,9 @@ export function DiceRollerSection() {
   }
 
   function customRoll() {
+    const mod = parseInt(modifierStr, 10)
     setRollingDie(sides)
-    doRoll(sides, count, modifier, rollNote)
+    doRoll(sides, count, isNaN(mod) ? 0 : mod, rollNote)
     setTimeout(() => setRollingDie(null), 420)
   }
 
@@ -308,15 +309,12 @@ export function DiceRollerSection() {
                   })}
 
                   {lastRoll.modifier !== 0 && (
-                    <>
-                      <span className="text-stone-600 text-sm">+</span>
-                      <span className={clsx(
-                        'rounded-md border border-stone-700/50 bg-stone-800/60 px-2 py-0.5 text-sm font-bold font-mono',
-                        lastRoll.modifier > 0 ? 'text-emerald-400' : 'text-red-400',
-                      )}>
-                        {lastRoll.modifier > 0 ? `+${lastRoll.modifier}` : lastRoll.modifier}
-                      </span>
-                    </>
+                    <span className={clsx(
+                      'rounded-md border border-stone-700/50 bg-stone-800/60 px-2 py-0.5 text-sm font-bold font-mono',
+                      lastRoll.modifier > 0 ? 'text-emerald-400' : 'text-red-400',
+                    )}>
+                      {lastRoll.modifier > 0 ? `+${lastRoll.modifier}` : lastRoll.modifier}
+                    </span>
                   )}
                 </div>
               </div>
@@ -363,8 +361,8 @@ export function DiceRollerSection() {
               <span className="text-[10px] text-stone-500 uppercase tracking-wide">Modifier</span>
               <input
                 type="number"
-                value={modifier}
-                onChange={e => setModifier(Number(e.target.value))}
+                value={modifierStr}
+                onChange={e => setModifierStr(e.target.value)}
                 className="field w-20 text-center text-sm font-mono"
               />
             </label>

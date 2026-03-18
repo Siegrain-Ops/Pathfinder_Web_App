@@ -52,6 +52,8 @@ export function createBlankCharacter(): CharacterData {
     notes:       '',
 
     favoredClassBonus: 'hp',
+
+    needsSetup: true,
   }
 
   return recomputeCharacter(raw)

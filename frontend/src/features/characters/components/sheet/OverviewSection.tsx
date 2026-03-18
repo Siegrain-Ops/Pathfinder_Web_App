@@ -104,7 +104,12 @@ export function OverviewSection() {
                 value={data.race}
                 onChange={e => {
                   const nextRace = races.find(race => race.name === e.target.value) ?? null
-                  update({ race: e.target.value })
+                  update({
+                    race: e.target.value,
+                    combat: nextRace?.baseSpeed != null
+                      ? { ...data.combat, speed: nextRace.baseSpeed }
+                      : data.combat,
+                  })
                   setReferenceRaceId(nextRace?.id ?? null)
                 }}
                 disabled={isLocked || racesLoading}

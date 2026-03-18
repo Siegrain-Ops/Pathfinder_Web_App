@@ -3,6 +3,8 @@ import { SectionPanel }          from './SectionPanel'
 import { Button }                from '@/components/ui/Button'
 import { useCharacterSheet }     from '../../hooks/useCharacterSheet'
 import { useReferenceClasses }   from '../../hooks/useReferenceClasses'
+import { isCasterSpellcastingType } from '@/lib/utils/spellcasting.utils'
+import { totalRanksSpent, approximateRankBudget } from '@/lib/formulas/skills.formulas'
 import { clsx }                  from 'clsx'
 import type { ReferenceClass }   from '@/types'
 
@@ -19,7 +21,7 @@ function formatMod(n: number) {
 }
 
 function rollAverage(die: number) {
-  return Math.floor(die / 2) + 1
+  return Math.max(1, Math.floor(die / 2))
 }
 
 // ---------------------------------------------------------------------------
@@ -85,7 +87,15 @@ export function LevelUpSection() {
 
   const gainsFeat         = nextLevel % 2 === 1
   const gainsAbilityScore = nextLevel % 4 === 0
-  const isCaster          = !!(refClass?.spellcastingType)
+  const isCaster          = isCasterSpellcastingType(refClass?.spellcastingType)
+
+  const totalSpent  = totalRanksSpent(d.skills)
+  const totalBudget = approximateRankBudget(d.level, refClass?.skillRanks ?? null, intMod, favoredClassBonus)
+
+  // ── HP idempotency guard ────────────────────────────────────────────────
+  // hpApplied is local state (resets on tab change). The real guard is
+  // lastHpLevelUpApplied persisted in character data.
+  const isHpApplied = hpApplied || (d.lastHpLevelUpApplied ?? 0) >= nextLevel
 
   const newFeatures = refClass?.classFeatures?.filter(f => f.level === nextLevel) ?? []
 
@@ -107,6 +117,13 @@ export function LevelUpSection() {
   // ── Action helpers ────────────────────────────────────────────────────────
 
   function markDone(step: StepId) {
+    // Auto-apply deterministic bonuses when marking done without clicking Apply.
+    // BAB/saves are absolute table values (idempotent to re-apply), so this is safe.
+    if (step === 'bab_saves') {
+      if (!babApplied) applyBab()
+      if (!savesApplied) applySaves()
+    }
+
     const newDone = new Set([...done, step])
     setDone(newDone)
     // Auto-advance to next undone step
@@ -137,8 +154,10 @@ export function LevelUpSection() {
   }
 
   function applyHp() {
+    if (isHpApplied) return  // guard against double-apply across tab changes
     const totalGain = avgHpGain + fcbHpBonus
     update({
+      lastHpLevelUpApplied: nextLevel,  // persisted guard — survives tab changes
       combat: {
         ...d.combat,
         hitPoints: {
@@ -243,7 +262,7 @@ export function LevelUpSection() {
                   avgGain={avgHpGain}
                   fcbBonus={fcbHpBonus}
                   currentMax={d.combat.hitPoints.max}
-                  applied={hpApplied}
+                  applied={isHpApplied}
                   onApply={applyHp}
                 />
               )}
@@ -270,6 +289,8 @@ export function LevelUpSection() {
                   skillRanksBase={refClass?.skillRanks ?? null}
                   intMod={intMod}
                   classSkills={refClass?.classSkills?.map(s => s.name) ?? null}
+                  totalSpent={totalSpent}
+                  totalBudget={totalBudget}
                 />
               )}
               {step === 'features' && (
@@ -532,20 +553,23 @@ function BabSavesStep({
 }
 
 function SkillsStep({
-  rankBudget, fcbBonus, skillRanksBase, intMod, classSkills,
+  rankBudget, fcbBonus, skillRanksBase, intMod, classSkills, totalSpent, totalBudget: totalBudgetProp,
 }: {
   rankBudget: number
   fcbBonus: number
   skillRanksBase: number | null
   intMod: number
   classSkills: string[] | null
+  totalSpent: number
+  totalBudget: number | null
 }) {
-  const totalBudget = rankBudget + fcbBonus
+  const levelBudget = rankBudget + fcbBonus
+  const remaining   = totalBudgetProp !== null ? totalBudgetProp - totalSpent : null
 
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-stone-400">
-        You earn <strong className="text-amber-400">{totalBudget} skill rank{totalBudget !== 1 ? 's' : ''}</strong> this level
+        You earn <strong className="text-amber-400">{levelBudget} skill rank{levelBudget !== 1 ? 's' : ''}</strong> this level
         {skillRanksBase !== null && (
           <> ({skillRanksBase} class + {formatMod(intMod)} INT, min 1{fcbBonus > 0 ? `, +${fcbBonus} FCB` : ''})</>
         )}.
@@ -559,8 +583,46 @@ function SkillsStep({
         {skillRanksBase !== null && <InfoChip label="Class ranks/lvl" value={String(skillRanksBase)} />}
         <InfoChip label="INT modifier"  value={formatMod(intMod)} />
         {fcbBonus > 0 && <InfoChip label="FCB" value={`+${fcbBonus}`} fcb />}
-        <InfoChip label="Total budget"  value={`+${totalBudget}`} accent />
+        <InfoChip label="This level"    value={`+${levelBudget}`} accent />
       </div>
+
+      {/* ── Total rank budget across all levels ─── */}
+      {totalBudgetProp !== null && (
+        <div className={clsx(
+          'flex items-center justify-between rounded-lg border px-4 py-3',
+          remaining !== null && remaining < 0
+            ? 'border-red-700/50 bg-red-950/20'
+            : remaining === 0
+              ? 'border-amber-700/50 bg-amber-950/20'
+              : 'border-stone-700/50 bg-stone-900/60',
+        )}>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] uppercase tracking-wider text-stone-500">Total ranks (all levels)</span>
+            <span className={clsx(
+              'text-xs',
+              remaining !== null && remaining < 0 ? 'text-red-400' : 'text-stone-400',
+            )}>
+              {remaining !== null && remaining < 0
+                ? `${Math.abs(remaining)} rank${Math.abs(remaining) !== 1 ? 's' : ''} over budget`
+                : remaining === 0
+                  ? 'All ranks spent'
+                  : remaining !== null
+                    ? `${remaining} rank${remaining !== 1 ? 's' : ''} remaining`
+                    : ''}
+            </span>
+          </div>
+          <span className={clsx(
+            'text-lg font-bold font-mono',
+            remaining !== null && remaining < 0
+              ? 'text-red-400'
+              : remaining === 0
+                ? 'text-amber-300'
+                : 'text-stone-200',
+          )}>
+            {totalSpent} / {totalBudgetProp}
+          </span>
+        </div>
+      )}
 
       {classSkills && classSkills.length > 0 && (
         <div className="flex flex-col gap-2">

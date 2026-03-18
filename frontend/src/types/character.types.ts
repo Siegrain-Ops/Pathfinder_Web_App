@@ -150,6 +150,20 @@ export interface CharacterData {
 
   // ── Active Effects (buff/debuff/condition tracking) ───────
   activeEffects?: ActiveEffect[]
+
+  /**
+   * Marks a character as needing initial setup (stats, HP, BAB/saves).
+   * Set to true when the character is first created; cleared when setup is complete.
+   * Absent on existing characters — treated as already set up.
+   */
+  needsSetup?: boolean
+
+  /**
+   * The `nextLevel` value at which HP was last applied via the Level Up workflow.
+   * Guards against double-applying the additive HP gain (e.g. after a tab switch that
+   * resets local component state). Absent on existing characters → treated as 0.
+   */
+  lastHpLevelUpApplied?: number
 }
 
 /** Full persisted character record (includes DB metadata). */

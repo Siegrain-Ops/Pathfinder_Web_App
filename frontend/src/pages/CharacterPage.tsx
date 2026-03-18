@@ -34,6 +34,13 @@ export function CharacterPage() {
     return () => clearActive()
   }, [id, loadCharacter, clearActive, navigate])
 
+  // Guard: redirect to initial setup if character is new and not yet set up
+  useEffect(() => {
+    if (!isLoading && active?.data.needsSetup === true) {
+      navigate(`/characters/${active.id}/setup`, { replace: true })
+    }
+  }, [isLoading, active, navigate])
+
   // Ctrl+S / Cmd+S to save
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

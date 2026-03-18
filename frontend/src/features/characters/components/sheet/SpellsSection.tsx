@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react'
-import { SectionPanel }      from './SectionPanel'
-import { StatInput }         from './StatInput'
-import { Button }            from '@/components/ui/Button'
-import { Badge }             from '@/components/ui/Badge'
-import { useCharacterSheet } from '../../hooks/useCharacterSheet'
-import { calcSpellDC }       from '@/lib/formulas/spells.formulas'
+import { SectionPanel }        from './SectionPanel'
+import { StatInput }           from './StatInput'
+import { Button }              from '@/components/ui/Button'
+import { Badge }               from '@/components/ui/Badge'
+import { useCharacterSheet }   from '../../hooks/useCharacterSheet'
+import { useReferenceClasses } from '../../hooks/useReferenceClasses'
+import { calcSpellDC }         from '@/lib/formulas/spells.formulas'
+import {
+  getSpellcastingTypeLabel,
+  isCasterSpellcastingType,
+  normalizeSpellcastingType,
+} from '@/lib/utils/spellcasting.utils'
 import { referenceSpellService } from '../../services/reference-spell.service'
 import type { ReferenceSpell, Spell, SpellSection } from '@/types'
 import type { AbilityScoreName } from '@/types'
@@ -16,6 +22,8 @@ const SPELL_LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const
 
 export function SpellsSection() {
   const { data, update } = useCharacterSheet()
+  const { classes }      = useReferenceClasses()
+
   const [activeLevel, setActiveLevel] = useState<number>(0)
   const [expandedId, setExpandedId]   = useState<string | null>(null)
   const [searchTerm, setSearchTerm]   = useState('')
@@ -26,8 +34,31 @@ export function SpellsSection() {
   if (!data) return null
 
   const { spells, stats } = data
+
+  // ── Reference class lookup ──────────────────────────────────────────────
+  const refClass = classes.find(
+    c => c.name.toLowerCase() === data.className.toLowerCase(),
+  ) ?? null
+
+  // Casting type from reference class
+  const normalizedCastingType = normalizeSpellcastingType(refClass?.spellcastingType)
+  const isPrepared            = normalizedCastingType === 'prepared'
+  const isSpontaneous         = normalizedCastingType === 'spontaneous'
+  const isCasterFromClass     = isCasterSpellcastingType(refClass?.spellcastingType)
+  const castingTypeLabel      = getSpellcastingTypeLabel(refClass?.spellcastingType)
+
+  // Recommended casting stat from reference class
+  const refCastingStatRaw = refClass?.castingStat?.toLowerCase() ?? null
+  const refCastingStat    = (['intelligence', 'wisdom', 'charisma'] as const)
+    .find(k => k === refCastingStatRaw) ?? null
+
+  // ── Casting stat minimum enforcement ────────────────────────────────────
+  // PF1e: to cast spells of level N, casting stat must be >= 10 + N
+  const castingStatScore  = stats[spells.castingStat].total
+  const maxCastableLevel  = castingStatScore - 10   // 0 = cantrips only; <0 = none above cantrips
+
   const castingMod = stats[spells.castingStat].modifier
-  const classKey = inferClassKey(data.className)
+  const classKey   = inferClassKey(data.className)
 
   function updateSpells(patch: Partial<SpellSection>) {
     update({ spells: { ...data!.spells, ...patch } })
@@ -104,7 +135,8 @@ export function SpellsSection() {
     return () => window.clearTimeout(timeoutId)
   }, [activeLevel, classKey, searchTerm])
 
-  const spellsForLevel = spells.knownSpells.filter(s => s.level === activeLevel)
+  const spellsForLevel   = spells.knownSpells.filter(s => s.level === activeLevel)
+  const levelIsLocked    = activeLevel > 0 && maxCastableLevel < activeLevel
 
   return (
     <div className="flex flex-col gap-4">
@@ -137,7 +169,39 @@ export function SpellsSection() {
           <InfoStat label="Base Spell DC" value={String(spells.spellDC)} />
           <InfoStat label="Concentration"  value={spells.concentrationBonus >= 0
             ? `+${spells.concentrationBonus}` : `${spells.concentrationBonus}`} />
+
+          {/* Casting type badge (from reference class) */}
+          {castingTypeLabel && (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] font-medium text-stone-500 uppercase tracking-wider">Type</span>
+              <span className={
+                isPrepared    ? 'text-sm font-semibold text-blue-400'
+                : isSpontaneous ? 'text-sm font-semibold text-violet-400'
+                : 'text-sm font-semibold text-cyan-400'
+              }>
+                {castingTypeLabel}
+              </span>
+            </div>
+          )}
         </div>
+
+        {/* Recommended stat hint when stored stat differs from reference */}
+        {isCasterFromClass && refCastingStat && refCastingStat !== spells.castingStat && (
+          <p className="mt-2 text-xs text-amber-500/70 italic">
+            Reference class recommends {ABILITY_ABBR[refCastingStat]} as casting stat.
+            Update the selector above if this character uses {refCastingStat}.
+          </p>
+        )}
+
+        {/* Stat minimum info */}
+        <p className="mt-2 text-[10px] text-stone-600">
+          {ABILITY_ABBR[spells.castingStat]} {castingStatScore} →
+          can cast up to{' '}
+          {maxCastableLevel <= 0
+            ? 'cantrips only'
+            : `level ${Math.min(maxCastableLevel, 9)} spells`}
+          {' '}(need {ABILITY_ABBR[spells.castingStat]} ≥ 10 + spell level)
+        </p>
       </SectionPanel>
 
       {/* ── Spells per Day ──────────────────────────────────── */}
@@ -168,7 +232,11 @@ export function SpellsSection() {
       {/* ── Spell List ──────────────────────────────────────── */}
       <SectionPanel
         title="Known Spells"
-        action={<Button size="sm" onClick={addSpell}>+ Add Spell</Button>}
+        action={
+          <Button size="sm" onClick={addSpell} disabled={levelIsLocked}>
+            + Add Spell
+          </Button>
+        }
       >
         <div className="mb-4 flex flex-col gap-2">
           <label className="flex flex-col gap-1">
@@ -179,7 +247,8 @@ export function SpellsSection() {
               className="field"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              placeholder="Type at least 2 characters..."
+              placeholder={levelIsLocked ? 'Raise casting stat to access this level' : 'Type at least 2 characters...'}
+              disabled={levelIsLocked}
             />
           </label>
 
@@ -223,15 +292,22 @@ export function SpellsSection() {
         {/* Level filter tabs */}
         <div className="flex gap-1 mb-4 flex-wrap">
           {SPELL_LEVELS.map(lvl => {
-            const count = spells.knownSpells.filter(s => s.level === lvl).length
+            const count      = spells.knownSpells.filter(s => s.level === lvl).length
+            const statTooLow = lvl > 0 && maxCastableLevel < lvl
             return (
               <button
                 key={lvl}
-                onClick={() => setActiveLevel(lvl)}
+                onClick={() => { if (!statTooLow) setActiveLevel(lvl) }}
+                disabled={statTooLow}
+                title={statTooLow
+                  ? `Requires ${ABILITY_ABBR[spells.castingStat]} ${10 + lvl} (currently ${castingStatScore})`
+                  : undefined}
                 className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                  activeLevel === lvl
-                    ? 'bg-amber-600 text-white'
-                    : 'bg-stone-700 text-stone-400 hover:bg-stone-600'
+                  statTooLow
+                    ? 'bg-stone-800/30 text-stone-600 cursor-not-allowed'
+                    : activeLevel === lvl
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-stone-700 text-stone-400 hover:bg-stone-600'
                 }`}
               >
                 {lvl === 0 ? 'Cantrips' : `Level ${lvl}`}
@@ -241,8 +317,16 @@ export function SpellsSection() {
           })}
         </div>
 
+        {/* Stat-too-low warning for active level */}
+        {levelIsLocked && (
+          <p className="text-xs text-amber-500/70 italic mb-3">
+            {ABILITY_ABBR[spells.castingStat]} {castingStatScore} is too low for level {activeLevel} spells
+            — requires {10 + activeLevel}+.
+          </p>
+        )}
+
         {/* DC for current level */}
-        {activeLevel > 0 && (
+        {activeLevel > 0 && !levelIsLocked && (
           <p className="text-xs text-stone-500 mb-3">
             DC for level {activeLevel} spells:{' '}
             <span className="text-amber-300 font-bold">
@@ -251,7 +335,7 @@ export function SpellsSection() {
           </p>
         )}
 
-        {spellsForLevel.length === 0 && (
+        {spellsForLevel.length === 0 && !levelIsLocked && (
           <p className="text-sm text-stone-500 text-center py-4">
             No {activeLevel === 0 ? 'cantrips' : `level ${activeLevel} spells`} added.
           </p>
@@ -335,6 +419,21 @@ export function SpellsSection() {
                       <input className="field" value={spell.savingThrow} disabled={isLocked}
                         onChange={e => updateSpell(spell.id, { savingThrow: e.target.value })} />
                     </SpellField>
+                    {/* Prepared count — only for prepared casters; not relevant for spontaneous */}
+                    {isPrepared && spell.level > 0 && (
+                      <SpellField label="Prepared Today">
+                        <input
+                          type="number"
+                          className="field"
+                          min={0} max={9}
+                          value={spell.prepared}
+                          disabled={isLocked}
+                          onChange={e => updateSpell(spell.id, {
+                            prepared: Math.max(0, parseInt(e.target.value, 10) || 0),
+                          })}
+                        />
+                      </SpellField>
+                    )}
                   </div>
                   <SpellField label="Description">
                     <textarea className="field min-h-[120px] resize-y" value={spell.description}

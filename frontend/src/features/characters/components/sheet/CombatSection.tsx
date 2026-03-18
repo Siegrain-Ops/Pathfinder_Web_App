@@ -6,6 +6,11 @@ import { Button }               from '@/components/ui/Button'
 import { useCharacterSheet }    from '../../hooks/useCharacterSheet'
 import { useReferenceClasses }  from '../../hooks/useReferenceClasses'
 import { formatModifier }       from '@/lib/utils/format.utils'
+import {
+  getSpellcastingTypeLabel,
+  isCasterSpellcastingType,
+  normalizeSpellcastingType,
+} from '@/lib/utils/spellcasting.utils'
 import { EFFECT_PRESETS }       from '../../constants/effectPresets'
 import { FamiliarCombatSection } from './FamiliarCombatSection'
 import type {
@@ -71,24 +76,33 @@ export function CombatSection() {
     [classes, d.className],
   )
 
-  // Caster detection: consider both combat-section override and spells section
+  // Caster detection: primary source is reference class spellcastingType.
+  // Fallback for multiclass / custom characters: has manually added spells or slots.
+  // Numeric fields (d.combat.casterLevel, d.spells.casterLevel) are NOT reliable
+  // caster flags — they can be accidentally set to non-zero on any character.
+  const normalizedCastingType = normalizeSpellcastingType(refClass?.spellcastingType)
   const isCaster =
-    !!(refClass?.spellcastingType) ||
-    !!(d.combat.casterLevel) ||
-    d.spells.casterLevel > 0 ||
-    d.spells.spellsPerDay.some(n => n > 0) ||
-    d.spells.knownSpells.length > 0
+    isCasterSpellcastingType(refClass?.spellcastingType) ||
+    d.spells.knownSpells.length > 0 ||
+    d.spells.spellsPerDay.slice(1).some(n => n > 0)
 
-  const castingStat = refClass?.castingStat?.toLowerCase() ?? null
-  const castingMod  = castingStat
-    ? abilityMod(
-        castingStat === 'intelligence' ? d.stats.intelligence.total
-      : castingStat === 'wisdom'       ? d.stats.wisdom.total
-      : castingStat === 'charisma'     ? d.stats.charisma.total
-      : 10,
-      )
-    : 0
-  const casterLevel = d.combat.casterLevel ?? d.level
+  // Casting type: prepared (wizard/cleric) vs spontaneous (sorcerer/oracle/bard)
+  const isPreparedCaster = normalizedCastingType === 'prepared'
+  const castingTypeLabel = getSpellcastingTypeLabel(refClass?.spellcastingType)
+
+  // Casting stat: reference class is authoritative; fall back to what's stored in spells section
+  const castingStatRaw = refClass?.castingStat?.toLowerCase() ?? d.spells.castingStat
+  const castingStat =
+    castingStatRaw === 'wisdom'   ? 'wisdom'   as const :
+    castingStatRaw === 'charisma' ? 'charisma' as const :
+                                    'intelligence' as const
+  const CASTING_ABBR = { intelligence: 'INT', wisdom: 'WIS', charisma: 'CHA' } as const
+
+  const castingMod = isCaster ? abilityMod(d.stats[castingStat].total) : 0
+  // 0 or undefined = auto (use character level). Positive = explicit CL override.
+  const casterLevel = (d.combat.casterLevel && d.combat.casterLevel > 0)
+    ? d.combat.casterLevel
+    : d.level
 
   // ── Effective values (base + active effect bonuses) ─────────────────────
   const eff = {
@@ -558,13 +572,29 @@ export function CombatSection() {
       {isCaster && (
         <SectionPanel title="Spellcasting in Combat">
 
+          {/* ── Casting type label ── */}
+          {castingTypeLabel && (
+            <p className="text-xs mb-3">
+              <span className={
+                normalizedCastingType === 'prepared'
+                  ? 'text-blue-400 font-semibold'
+                  : normalizedCastingType === 'spontaneous'
+                    ? 'text-violet-400 font-semibold'
+                    : 'text-cyan-400 font-semibold'
+              }>
+                {castingTypeLabel} caster
+              </span>
+              <span className="text-stone-600"> · {CASTING_ABBR[castingStat]} {formatModifier(castingMod)}</span>
+            </p>
+          )}
+
           {/* ── Key stats row ── */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
             <div className="flex flex-col gap-1 items-center rounded-xl border border-stone-700/60 bg-stone-900/80 py-3 px-2">
               <span className="text-2xl font-bold font-mono text-amber-300">{formatModifier(eff.conc)}</span>
               <span className="text-[10px] uppercase tracking-wide text-stone-500">Concentration</span>
               <span className="text-[9px] text-stone-600">
-                CL {casterLevel} + {castingStat?.toUpperCase() ?? '?'} {formatModifier(castingMod)}
+                CL {casterLevel} + {CASTING_ABBR[castingStat]} {formatModifier(castingMod)}
               </span>
             </div>
             <div className="flex flex-col gap-1 items-center rounded-xl border border-stone-700/60 bg-stone-900/80 py-3 px-2">
@@ -575,12 +605,12 @@ export function CombatSection() {
               <span className="text-2xl font-bold font-mono text-stone-100">{eff.spellDc}</span>
               <span className="text-[10px] uppercase tracking-wide text-stone-500">Base Spell DC</span>
               <span className="text-[9px] text-stone-600">
-                10 + {castingStat?.toUpperCase() ?? '?'} {formatModifier(castingMod)} + SL
+                10 + {CASTING_ABBR[castingStat]} {formatModifier(castingMod)} + SL
               </span>
             </div>
             <div className="flex flex-col gap-2">
-              <StatInput label="CL Override" value={d.combat.casterLevel ?? d.level}       onChange={v => patchCombat('casterLevel', v)}          min={0} />
-              <StatInput label="Conc Misc"   value={d.combat.concentrationMisc ?? 0}        onChange={v => patchCombat('concentrationMisc', v)} />
+              <StatInput label="CL Override (0=auto)" value={d.combat.casterLevel ?? 0} onChange={v => patchCombat('casterLevel', v)} min={0} />
+              <StatInput label="Conc Misc"             value={d.combat.concentrationMisc ?? 0} onChange={v => patchCombat('concentrationMisc', v)} />
             </div>
           </div>
 
@@ -588,6 +618,7 @@ export function CombatSection() {
           <SpellCombatPanel
             spells={d.spells}
             baseDc={eff.spellDc}
+            isPrepared={isPreparedCaster}
             onCast={castSpell}
             onUncast={uncastSpell}
             onResetDay={resetSpellDay}
@@ -766,10 +797,11 @@ const SCHOOL_COLOR: Record<Spell['school'], string> = {
 }
 
 function SpellCombatPanel({
-  spells, baseDc, onCast, onUncast, onResetDay,
+  spells, baseDc, isPrepared, onCast, onUncast, onResetDay,
 }: {
   spells:      SpellSection
   baseDc:      number
+  isPrepared:  boolean
   onCast:      (id: string) => void
   onUncast:    (id: string) => void
   onResetDay:  () => void
@@ -903,9 +935,11 @@ function SpellCombatPanel({
         {spellsAtLevel.map(spell => {
           const isCantrip   = spell.level === 0
           const slotsLeft   = isCantrip ? Infinity : slotRemaining
-          // For prepared casters: can't cast same spell more times than prepared (if prepared > 0).
-          // Cantrips (level 0) are always unlimited regardless of the prepared field.
-          const prepLimit   = isCantrip ? Infinity : spell.prepared > 0 ? spell.prepared : Infinity
+          // Prepared casters: each spell has a per-preparation limit (spell.prepared).
+          // Spontaneous casters: no per-spell limit — only slot availability matters.
+          const prepLimit   = isCantrip ? Infinity
+            : isPrepared && spell.prepared > 0 ? spell.prepared
+            : Infinity
           const canCast     = slotsLeft > 0 && spell.cast < prepLimit
           const fullySpent  = !isCantrip && (slotsLeft === 0 || spell.cast >= prepLimit)
 
@@ -934,7 +968,7 @@ function SpellCombatPanel({
                   )}>
                     {spell.name || <span className="italic">Unnamed Spell</span>}
                   </span>
-                  {spell.prepared > 0 && (
+                  {isPrepared && spell.prepared > 0 && (
                     <span className="text-[10px] text-stone-600 shrink-0">
                       {spell.cast}/{spell.prepared} prep
                     </span>

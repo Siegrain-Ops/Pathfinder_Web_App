@@ -4,7 +4,8 @@
 
 import type { Skill } from '@/types/skill.types'
 import type { Stats } from '@/types/stat.types'
-import { PATHFINDER_SKILLS } from '@/lib/constants/skills.constants'
+import type { AbilityScoreName } from '@/types/stat.types'
+import { PATHFINDER_SKILLS, type SpecializableBase } from '@/lib/constants/skills.constants'
 import { defaultSkill } from '@/types/skill.types'
 
 /**
@@ -62,4 +63,58 @@ export function buildDefaultSkillList(classSkillIds: string[] = []): Skill[] {
     ...skill,
     isClassSkill: classSkillIds.includes(skill.id),
   }))
+}
+
+// ── Specializable skill helpers ───────────────────────────────────────────────
+
+const SPECIALIZABLE_CONFIG: Record<SpecializableBase, { linkedStat: AbilityScoreName; trainedOnly: boolean }> = {
+  Craft:      { linkedStat: 'intelligence', trainedOnly: false },
+  Perform:    { linkedStat: 'charisma',     trainedOnly: false },
+  Profession: { linkedStat: 'wisdom',       trainedOnly: true  },
+}
+
+/**
+ * Creates a new custom specialization Skill instance.
+ * E.g. createSpecializationSkill('Craft', 'Bows') → Skill { name: 'Craft (Bows)', ... }
+ *
+ * A stable UUID is used for the id so the skill can be safely persisted and
+ * referenced without collisions.
+ */
+export function createSpecializationSkill(
+  base: SpecializableBase,
+  specialization: string,
+): Skill {
+  const { linkedStat, trainedOnly } = SPECIALIZABLE_CONFIG[base]
+  const id   = crypto.randomUUID()
+  const name = `${base} (${specialization.trim()})`
+  return defaultSkill(id, name, linkedStat, trainedOnly)
+}
+
+/**
+ * Total skill ranks currently invested across all skills.
+ * Used to display spent-vs-budget in the Skills tab.
+ */
+export function totalRanksSpent(skills: Skill[]): number {
+  return skills.reduce((sum, s) => sum + s.ranks, 0)
+}
+
+/**
+ * Approximate total skill rank budget accumulated across all character levels.
+ *
+ * Assumes the character's INT modifier and FCB choice have been constant
+ * throughout their career — this is a good-enough approximation for a budget
+ * hint; it is not a hard game-enforced cap.
+ *
+ * Returns null when ranksPerLevel is unknown (class not in the reference archive).
+ */
+export function approximateRankBudget(
+  level: number,
+  ranksPerLevel: number | null,
+  intMod: number,
+  favoredClassBonus: string,
+): number | null {
+  if (ranksPerLevel === null) return null
+  const perLevel = Math.max(1, ranksPerLevel + intMod)
+  const fcbBonus = favoredClassBonus === 'skill_rank' ? level : 0
+  return level * perLevel + fcbBonus
 }

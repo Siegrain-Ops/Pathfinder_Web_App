@@ -4,6 +4,29 @@
 
 import { prisma } from '../../common/db/prisma'
 
+function getEmailVerificationTokenDelegate() {
+  return (prisma as typeof prisma & {
+    emailVerificationToken?: {
+      create: typeof prisma.emailVerificationToken.create
+      findUnique: typeof prisma.emailVerificationToken.findUnique
+      findFirst: typeof prisma.emailVerificationToken.findFirst
+      deleteMany: typeof prisma.emailVerificationToken.deleteMany
+      count: typeof prisma.emailVerificationToken.count
+    }
+  }).emailVerificationToken
+}
+
+function getPasswordResetTokenDelegate() {
+  return (prisma as typeof prisma & {
+    passwordResetToken?: {
+      create: typeof prisma.passwordResetToken.create
+      findUnique: typeof prisma.passwordResetToken.findUnique
+      delete: typeof prisma.passwordResetToken.delete
+      deleteMany: typeof prisma.passwordResetToken.deleteMany
+    }
+  }).passwordResetToken
+}
+
 // ── User ────────────────────────────────────────────────────────────────────
 
 export const authRepository = {
@@ -67,53 +90,71 @@ export const authRepository = {
   // ── Email Verification Tokens ─────────────────────────────────────────────
 
   async createEmailVerificationToken(userId: string, tokenHash: string, expiresAt: Date) {
-    return prisma.emailVerificationToken.create({
+    const delegate = getEmailVerificationTokenDelegate()
+    if (!delegate) throw new Error('EmailVerificationToken model is not available in Prisma Client')
+    return delegate.create({
       data: { userId, tokenHash, expiresAt },
     })
   },
 
   async findEmailVerificationTokenByHash(tokenHash: string) {
-    return prisma.emailVerificationToken.findUnique({
+    const delegate = getEmailVerificationTokenDelegate()
+    if (!delegate) return null
+    return delegate.findUnique({
       where: { tokenHash },
       include: { user: true },
     })
   },
 
   async findRecentEmailVerificationToken(userId: string, since: Date) {
-    return prisma.emailVerificationToken.findFirst({
+    const delegate = getEmailVerificationTokenDelegate()
+    if (!delegate) return null
+    return delegate.findFirst({
       where: { userId, createdAt: { gte: since } },
     })
   },
 
   async deleteEmailVerificationTokensByUserId(userId: string) {
-    await prisma.emailVerificationToken.deleteMany({ where: { userId } })
+    const delegate = getEmailVerificationTokenDelegate()
+    if (!delegate) return
+    await delegate.deleteMany({ where: { userId } })
   },
 
   async hasEmailVerificationTokens(userId: string): Promise<boolean> {
-    const count = await prisma.emailVerificationToken.count({ where: { userId } })
+    const delegate = getEmailVerificationTokenDelegate()
+    if (!delegate) return false
+    const count = await delegate.count({ where: { userId } })
     return count > 0
   },
 
   // ── Password Reset Tokens ─────────────────────────────────────────────────
 
   async createPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date) {
-    return prisma.passwordResetToken.create({
+    const delegate = getPasswordResetTokenDelegate()
+    if (!delegate) throw new Error('PasswordResetToken model is not available in Prisma Client')
+    return delegate.create({
       data: { userId, tokenHash, expiresAt },
     })
   },
 
   async findPasswordResetTokenByHash(tokenHash: string) {
-    return prisma.passwordResetToken.findUnique({
+    const delegate = getPasswordResetTokenDelegate()
+    if (!delegate) return null
+    return delegate.findUnique({
       where: { tokenHash },
       include: { user: true },
     })
   },
 
   async deletePasswordResetToken(id: string) {
-    await prisma.passwordResetToken.delete({ where: { id } })
+    const delegate = getPasswordResetTokenDelegate()
+    if (!delegate) return
+    await delegate.delete({ where: { id } })
   },
 
   async deletePasswordResetTokensByUserId(userId: string) {
-    await prisma.passwordResetToken.deleteMany({ where: { userId } })
+    const delegate = getPasswordResetTokenDelegate()
+    if (!delegate) return
+    await delegate.deleteMany({ where: { userId } })
   },
 }

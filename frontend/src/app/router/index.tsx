@@ -2,6 +2,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { AppLayout }          from '@/components/layout/AppLayout'
 import { DashboardPage }      from '@/pages/DashboardPage'
 import { CharacterPage }      from '@/pages/CharacterPage'
+import { CharacterSetupPage } from '@/pages/CharacterSetupPage'
 import { SettingsPage }       from '@/pages/SettingsPage'
 import { LoginPage }          from '@/pages/LoginPage'
 import { RegisterPage }       from '@/pages/RegisterPage'
@@ -40,8 +41,9 @@ const router = createBrowserRouter([
     ),
     children: [
       { index: true,               element: <DashboardPage /> },
-      { path: 'characters/:id',    element: <CharacterPage /> },
-      { path: 'settings',          element: <SettingsPage /> },
+      { path: 'characters/:id',       element: <CharacterPage /> },
+      { path: 'characters/:id/setup', element: <CharacterSetupPage /> },
+      { path: 'settings',             element: <SettingsPage /> },
     ],
   },
 ])

@@ -10,7 +10,7 @@ import { generateToken, hashToken, tokenExpiry } from './token.utils'
 import { AppError } from '../../common/errors/AppError'
 
 const BCRYPT_ROUNDS  = 12
-const SESSION_TTL_MS = 12 * 60 * 60 * 1000 // 12 hours
+const SESSION_TTL_MS = 2 * 60 * 60 * 1000 // 2 hours
 
 const COOKIE_NAME = 'sid'
 

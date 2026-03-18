@@ -13,6 +13,12 @@ type JsonPower = {
   level?: number
 }
 
+type JsonRaceTrait = {
+  name?: string
+  description?: string
+  type?: string
+}
+
 export const referenceAbilityRepository = {
   async search(params: AbilitySearchParams): Promise<ReferenceAbilityResult[]> {
     const {
@@ -171,6 +177,39 @@ export const referenceAbilityRepository = {
 
     // ── 6. Merge, map, deduplicate, sort, paginate ────────────────────────────
 
+    const raceTraitResults: ReferenceAbilityResult[] = []
+    if (kind !== 'talent' && qLower && race) {
+      const raceRows = await prisma.referenceRace.findMany({
+        where: { name: { contains: race } },
+        select: { id: true, name: true, traits: true, sourceName: true, sourceUrl: true },
+      })
+
+      for (const raceRow of raceRows) {
+        const traits = (raceRow.traits as JsonRaceTrait[] | null) ?? []
+        for (const trait of traits) {
+          if (!trait.name) continue
+          const haystack = `${trait.name} ${trait.description ?? ''}`.toLowerCase()
+          if (!haystack.includes(qLower)) continue
+          raceTraitResults.push({
+            id:               `race-trait-${raceRow.id}-${slugify(trait.name)}`,
+            name:             trait.name,
+            kind:             'ability',
+            abilityType:      trait.type ?? null,
+            category:         'race',
+            className:        null,
+            sourceParentName: raceRow.name,
+            sourceOptionName: `${raceRow.name} Race`,
+            usesPerDay:       null,
+            frequencyText:    null,
+            levelRequirement: null,
+            description:      trait.description ?? null,
+            sourceName:       raceRow.sourceName,
+            sourceUrl:        raceRow.sourceUrl,
+          })
+        }
+      }
+    }
+
     const mapped: ReferenceAbilityResult[] = [
       ...abilities.map((row): ReferenceAbilityResult => ({
         id:               row.id,
@@ -238,6 +277,7 @@ export const referenceAbilityRepository = {
       })),
       ...domainPowerResults,
       ...bloodlinePowerResults,
+      ...raceTraitResults,
     ]
 
     // Deduplicate by name (case-insensitive). When the same ability exists in

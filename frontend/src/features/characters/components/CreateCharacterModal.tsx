@@ -12,7 +12,7 @@ import { ALIGNMENTS, COMMON_CLASSES, COMMON_RACES } from '@/lib/constants'
 import { useCharacterStore }   from '@/app/store/characterStore'
 import { recomputeCharacter }  from '@/lib/formulas/character.formulas'
 import { createBlankCharacter } from '@/lib/utils/character.utils'
-import type { Alignment, ClassOptions, SizeCategory } from '@/types'
+import type { Alignment, ClassOptions, ReferenceRace, SizeCategory } from '@/types'
 import { useReferenceRaces }    from '../hooks/useReferenceRaces'
 import { useReferenceClasses }  from '../hooks/useReferenceClasses'
 import { useReferenceArchetypes } from '../hooks/useReferenceArchetypes'
@@ -124,19 +124,20 @@ export function CreateCharacterModal({ open, onClose }: CreateCharacterModalProp
 
   const onSubmit = async (values: CharacterIdentityFormValues) => {
     const blank = createBlankCharacter()
-    const data  = recomputeCharacter({
+    const selectedRace = races.find(r => r.name === values.race) ?? null
+    const data  = applyReferenceRaceDefaults(recomputeCharacter({
       ...blank,
       ...values,
       alignment:    values.alignment as Alignment,
       size:         values.size as SizeCategory,
       classOptions: selClassOptions,
-    })
-    const referenceRaceId = races.find(r => r.name === values.race)?.id ?? null
+    }), selectedRace)
+    const referenceRaceId = selectedRace?.id ?? null
     const character = await useCharacterStore.getState().createCharacterWithData(data, referenceRaceId)
     reset()
     setSelClassOptions({})
     onClose()
-    navigate(`/characters/${character.id}`)
+    navigate(`/characters/${character.id}/setup`)
   }
 
   return (
@@ -424,6 +425,17 @@ export function CreateCharacterModal({ open, onClose }: CreateCharacterModalProp
       </form>
     </Modal>
   )
+}
+
+function applyReferenceRaceDefaults(data: ReturnType<typeof recomputeCharacter>, race: ReferenceRace | null) {
+  if (!race?.baseSpeed) return data
+  return {
+    ...data,
+    combat: {
+      ...data.combat,
+      speed: race.baseSpeed,
+    },
+  }
 }
 
 // ── Reusable form field wrapper ─────────────────────────────────────────────

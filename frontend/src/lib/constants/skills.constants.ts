@@ -52,3 +52,28 @@ export const PATHFINDER_SKILLS: SkillDefinition[] = [
   { id: 'swim',                name: 'Swim',                linkedStat: 'strength',      trainedOnly: false },
   { id: 'use_magic_device',    name: 'Use Magic Device',    linkedStat: 'charisma',      trainedOnly: true  },
 ]
+
+// ── Specializable skill bases ─────────────────────────────────────────────────
+//
+// These skills support unlimited user-defined specializations in PF1e.
+// E.g.:  Craft (Bows),  Perform (Oratory),  Profession (Sailor)
+//
+// Existing entries (craft_alchemy, perform_act, etc.) are treated as ordinary
+// specializations that the user can keep or remove.
+
+export const SPECIALIZABLE_SKILL_BASES = ['Craft', 'Perform', 'Profession'] as const
+export type SpecializableBase = typeof SPECIALIZABLE_SKILL_BASES[number]
+
+/**
+ * Returns the base skill name ('Craft', 'Perform', or 'Profession') if the
+ * given display name is a specialization of one of these bases; otherwise null.
+ *
+ * Matches both the bare base name ("Profession") and parenthesized forms
+ * ("Craft (Alchemy)", "Perform (Oratory)", etc.).
+ */
+export function getSpecializableBase(skillName: string): SpecializableBase | null {
+  for (const base of SPECIALIZABLE_SKILL_BASES) {
+    if (skillName === base || skillName.startsWith(`${base} (`)) return base
+  }
+  return null
+}
