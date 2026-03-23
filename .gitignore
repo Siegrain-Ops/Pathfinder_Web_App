@@ -9,6 +9,7 @@ backend/dist/
 
 # Environment files
 .env
+.env.prod
 backend/.env
 frontend/.env.mobile
 

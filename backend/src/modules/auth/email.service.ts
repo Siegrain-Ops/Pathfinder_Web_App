@@ -4,9 +4,16 @@
 
 import { Resend } from 'resend'
 
-const resend  = new Resend(process.env.RESEND_API_KEY)
 const FROM    = process.env.MAIL_FROM    ?? 'PathLegends <noreply@example.com>'
 const baseUrl = process.env.APP_BASE_URL ?? 'http://localhost:5173'
+
+function getResendClient(): Resend {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    throw new Error('Missing RESEND_API_KEY')
+  }
+  return new Resend(apiKey)
+}
 
 // ── Shared HTML shell ────────────────────────────────────────────────────────
 
@@ -47,6 +54,7 @@ export const emailService = {
     token: string,
   ): Promise<void> {
     const url = `${baseUrl}/verify-email?token=${token}`
+    const resend = getResendClient()
 
     await resend.emails.send({
       from:    FROM,
@@ -73,6 +81,7 @@ export const emailService = {
     token: string,
   ): Promise<void> {
     const url = `${baseUrl}/reset-password?token=${token}`
+    const resend = getResendClient()
 
     await resend.emails.send({
       from:    FROM,
