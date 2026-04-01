@@ -719,15 +719,18 @@ function SpellsSetupStep({
         <div className="flex flex-col gap-2">
           <SubLabel>Spells per Day at Level {level}</SubLabel>
           <div className="flex flex-wrap gap-2">
-            {spellsPerDay.map((count, idx) => (
-              <div
-                key={idx}
-                className="flex flex-col items-center rounded-lg border border-stone-700/60 bg-stone-900/60 px-3 py-2 min-w-[48px]"
-              >
-                <span className="text-xs text-stone-500 uppercase tracking-wide">L{idx}</span>
-                <span className="text-base font-bold text-stone-200 font-mono">{count}</span>
-              </div>
-            ))}
+            {spellsPerDay.map((count, idx) => {
+              const spellLevel = idx + 1
+              return (
+                <div
+                  key={idx}
+                  className="flex flex-col items-center rounded-lg border border-stone-700/60 bg-stone-900/60 px-3 py-2 min-w-[48px]"
+                >
+                  <span className="text-xs text-stone-500 uppercase tracking-wide">L{spellLevel}</span>
+                  <span className="text-base font-bold text-stone-200 font-mono">{count}</span>
+                </div>
+              )
+            })}
           </div>
         </div>
       ) : (
