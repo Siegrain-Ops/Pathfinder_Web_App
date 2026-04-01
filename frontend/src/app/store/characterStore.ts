@@ -18,6 +18,7 @@ interface CharacterState {
   active:     Character | null
   isDirty:    boolean
   isSaving:   boolean
+  isLevelUpInProgress: boolean
 
   // ── List actions ─────────────────────────────────────────
   fetchAll:             () => Promise<void>
@@ -31,6 +32,7 @@ interface CharacterState {
   saveCharacter:        () => Promise<void>
   updateCharacterData:  (patch: Partial<CharacterData>) => void
   setReferenceRaceId:   (referenceRaceId: string | null) => void
+  setLevelUpInProgress: (inProgress: boolean) => void
   clearActive:          () => void
 }
 
@@ -53,6 +55,7 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   active:    null,
   isDirty:   false,
   isSaving:  false,
+  isLevelUpInProgress: false,
 
   // ── Fetch list ─────────────────────────────────────────────────────────
   fetchAll: async () => {
@@ -97,7 +100,7 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
 
   // ── Load active character ──────────────────────────────────────────────
   loadCharacter: async (id) => {
-    set({ isLoading: true, error: null, active: null, isDirty: false })
+    set({ isLoading: true, error: null, active: null, isDirty: false, isLevelUpInProgress: false })
     try {
       const character = await characterService.getById(id)
       set({ active: character, isLoading: false })
@@ -108,8 +111,8 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
 
   // ── Save active character ──────────────────────────────────────────────
   saveCharacter: async () => {
-    const { active } = get()
-    if (!active) return
+    const { active, isLevelUpInProgress } = get()
+    if (!active || isLevelUpInProgress) return
     set({ isSaving: true })
     try {
       const savedWithRace = await characterService.update(active.id, {
@@ -141,6 +144,10 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
     set({ active: { ...active, referenceRaceId }, isDirty: true })
   },
 
+  setLevelUpInProgress: (inProgress) => {
+    set({ isLevelUpInProgress: inProgress })
+  },
+
   // ── Clear active ───────────────────────────────────────────────────────
-  clearActive: () => set({ active: null, isDirty: false }),
+  clearActive: () => set({ active: null, isDirty: false, isLevelUpInProgress: false }),
 }))

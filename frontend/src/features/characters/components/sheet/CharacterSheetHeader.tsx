@@ -11,7 +11,7 @@ const PAYPAL_URL =
   'https://www.paypal.com/donate?business=angelo.martinopw%40gmail.com&currency_code=EUR'
 
 export function CharacterSheetHeader() {
-  const { data, isDirty, isSaving, save, update } = useCharacterSheet()
+  const { data, isDirty, isSaving, isLevelUpInProgress, save, update } = useCharacterSheet()
   const { user, logout }  = useAuthStore()
   const { pathname }      = useLocation()
   const navigate          = useNavigate()
@@ -144,8 +144,10 @@ export function CharacterSheetHeader() {
             variant="primary"
             size="sm"
             loading={isSaving}
+            disabled={isLevelUpInProgress}
             onClick={() => void save()}
             className="shrink-0"
+            title={isLevelUpInProgress ? 'Complete the current level-up workflow before saving changes.' : undefined}
           >
             Save
           </Button>
@@ -171,6 +173,11 @@ export function CharacterSheetHeader() {
             <Badge variant="amber">Level {data.level}</Badge>
             <Badge variant="default">{data.alignment}</Badge>
           </div>
+          {isLevelUpInProgress && (
+            <p className="mt-1 text-xs text-amber-400/80">
+              Finish the current level-up workflow before saving changes.
+            </p>
+          )}
         </div>
 
         {/* Desktop HP tracker */}
@@ -212,8 +219,10 @@ export function CharacterSheetHeader() {
           variant={isDirty ? 'primary' : 'secondary'}
           size="sm"
           loading={isSaving}
+          disabled={isLevelUpInProgress}
           onClick={() => void save()}
           className="shrink-0"
+          title={isLevelUpInProgress ? 'Complete the current level-up workflow before saving changes.' : undefined}
         >
           {isDirty ? 'Save Changes' : 'Saved'}
         </Button>
@@ -285,20 +294,24 @@ export function CharacterSheetHeader() {
   )
 }
 
-function OverflowLink({
-  to, icon, label, active, onClick,
-}: {
-  to: string; icon: string; label: string; active: boolean; onClick: () => void
-}) {
+interface OverflowLinkProps {
+  to: string
+  icon: string
+  label: string
+  active?: boolean
+  onClick: () => void
+}
+
+function OverflowLink({ to, icon, label, active = false, onClick }: OverflowLinkProps) {
   return (
     <Link
       to={to}
-      role="menuitem"
       onClick={onClick}
+      role="menuitem"
       className={clsx(
         'flex items-center gap-3 px-4 py-3.5 text-sm transition-colors',
         active
-          ? 'text-amber-300 bg-stone-800/60'
+          ? 'bg-stone-800/90 text-stone-100'
           : 'text-stone-300 active:bg-stone-800 active:text-stone-100',
       )}
     >

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { SectionPanel }          from './SectionPanel'
 import { Button }                from '@/components/ui/Button'
 import { useCharacterSheet }     from '../../hooks/useCharacterSheet'
@@ -47,7 +47,7 @@ const ALL_STEPS: StepId[] = [
 // ---------------------------------------------------------------------------
 
 export function LevelUpSection() {
-  const { data, update, save } = useCharacterSheet()
+  const { data, update, save, setLevelUpInProgress } = useCharacterSheet()
   const { classes, isLoading } = useReferenceClasses()
 
   const [done, setDone]                               = useState<Set<StepId>>(new Set())
@@ -114,6 +114,13 @@ export function LevelUpSection() {
     return true
   })
 
+  const isWorkflowInProgress = done.size > 0
+
+  useEffect(() => {
+    setLevelUpInProgress(isWorkflowInProgress)
+    return () => setLevelUpInProgress(false)
+  }, [isWorkflowInProgress, setLevelUpInProgress])
+
   // ── Action helpers ────────────────────────────────────────────────────────
 
   function markDone(step: StepId) {
@@ -128,10 +135,11 @@ export function LevelUpSection() {
     setDone(newDone)
     // Auto-advance to next undone step
     const idx  = activeSteps.indexOf(step)
-    const next = activeSteps.slice(idx + 1).find(s => !done.has(s))
+    const next = activeSteps.slice(idx + 1).find(s => !newDone.has(s))
     setExpanded(next ?? null)
     // When all steps are done: save and reset the workflow for the next level
     if (activeSteps.every(s => newDone.has(s))) {
+      setLevelUpInProgress(false)
       save().then(() => {
         setDone(new Set())
         setExpanded('hp')
@@ -839,7 +847,7 @@ function SubLabel({ children }: { children: React.ReactNode }) {
       <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500 whitespace-nowrap">
         {children}
       </span>
-      <div className="flex-1 h-px bg-stone-700/50" />
+      <div className="h-px flex-1 bg-stone-800/80" />
     </div>
   )
 }

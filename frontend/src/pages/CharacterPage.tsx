@@ -24,8 +24,16 @@ export function CharacterPage() {
   const navigate      = useNavigate()
   const [tab, setTab] = useState<SheetTab>('overview')
 
-  const { loadCharacter, clearActive, isLoading, error, active, isDirty, saveCharacter } =
-    useCharacterStore()
+  const {
+    loadCharacter,
+    clearActive,
+    isLoading,
+    error,
+    active,
+    isDirty,
+    isLevelUpInProgress,
+    saveCharacter,
+  } = useCharacterStore()
 
   // Load on mount, clear on unmount
   useEffect(() => {
@@ -46,12 +54,12 @@ export function CharacterPage() {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
-        if (isDirty) void saveCharacter()
+        if (isDirty && !isLevelUpInProgress) void saveCharacter()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [isDirty, saveCharacter])
+  }, [isDirty, isLevelUpInProgress, saveCharacter])
 
   if (isLoading) {
     return (
