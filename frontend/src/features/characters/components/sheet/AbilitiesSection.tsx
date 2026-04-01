@@ -22,7 +22,7 @@ const TYPE_ABBR: Record<SpecialAbility['type'], string> = {
   'extraordinary':  'Ex',
   'spell-like':     'Sp',
   'supernatural':   'Su',
-  'class feature':  'Feat',
+  'class feature':  'CF',
   'racial trait':   'Race',
   'other':          '—',
 }
@@ -335,13 +335,15 @@ function ClassFeaturesPanel({
     [classes, className],
   )
 
-  // Features available at or below the character's current level
+  // Features available at or below the character's current level.
+  // Ignore unlevelled entries here: they were causing some classes (for example
+  // bloodrager) to expose nearly everything at level 1.
   const features = useMemo(() => {
     if (!refClass?.classFeatures) return []
     return refClass.classFeatures
-      .filter(f => f.level === undefined || f.level === null || f.level <= characterLevel)
+      .filter((f): f is typeof f & { level: number } => typeof f.level === 'number' && f.level <= characterLevel)
       .slice()
-      .sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
+      .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name))
   }, [refClass, characterLevel])
 
   if (!className) return null
@@ -382,15 +384,13 @@ function ClassFeaturesPanel({
             const isExpanded = expandedName === f.name
 
             return (
-              <div key={f.name} className="px-3 py-2">
+              <div key={`${f.level}-${f.name}`} className="px-3 py-2">
                 {/* Feature header row */}
                 <div className="flex items-start gap-2">
                   {/* Level badge */}
-                  {f.level != null && (
-                    <span className="mt-0.5 shrink-0 rounded bg-stone-800 border border-stone-700/50 px-1.5 py-0.5 text-[10px] font-mono text-stone-500">
-                      lv {f.level}
-                    </span>
-                  )}
+                  <span className="mt-0.5 shrink-0 rounded bg-stone-800 border border-stone-700/50 px-1.5 py-0.5 text-[10px] font-mono text-stone-500">
+                    lv {f.level}
+                  </span>
 
                   {/* Name — clickable to expand description */}
                   <button
