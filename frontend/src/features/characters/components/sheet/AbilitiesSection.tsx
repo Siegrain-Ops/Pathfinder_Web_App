@@ -4,6 +4,7 @@ import { Button }              from '@/components/ui/Button'
 import { Badge }               from '@/components/ui/Badge'
 import { useCharacterSheet }   from '../../hooks/useCharacterSheet'
 import { useReferenceClasses } from '../../hooks/useReferenceClasses'
+import { useReferenceArchetypes } from '../../hooks/useReferenceArchetypes'
 import { defaultAbility }      from '@/types/feat.types'
 import { referenceAbilityService } from '../../services/reference-ability.service'
 import { clsx }                from 'clsx'
@@ -326,7 +327,9 @@ interface ClassFeaturesPanelProps {
 function ClassFeaturesPanel({
   className, characterLevel, existingAbilityNames, onAdd,
 }: ClassFeaturesPanelProps) {
+  const { data } = useCharacterSheet()
   const { classes, isLoading } = useReferenceClasses()
+  const { archetypes } = useReferenceArchetypes(className)
   const [open, setOpen]         = useState(false)
   const [expandedName, setExpandedName] = useState<string | null>(null)
 
@@ -335,16 +338,37 @@ function ClassFeaturesPanel({
     [classes, className],
   )
 
+  const selectedArchetype = useMemo(() => {
+    const archetypeName = data?.classOptions?.archetypeName?.toLowerCase()
+    if (!archetypeName) return null
+    return archetypes.find(a => a.name.toLowerCase() === archetypeName) ?? null
+  }, [archetypes, data?.classOptions?.archetypeName])
+
   // Features available at or below the character's current level.
   // Ignore unlevelled entries here: they were causing some classes (for example
   // bloodrager) to expose nearly everything at level 1.
+  // Also apply archetype replacements/gains so the list reflects the actual class setup.
   const features = useMemo(() => {
-    if (!refClass?.classFeatures) return []
-    return refClass.classFeatures
+    const baseFeatures = (refClass?.classFeatures ?? [])
       .filter((f): f is typeof f & { level: number } => typeof f.level === 'number' && f.level <= characterLevel)
-      .slice()
+
+    const replaced = new Set(
+      (selectedArchetype?.replacedFeatures ?? [])
+        .filter(r => typeof r.level === 'number' && r.level <= characterLevel)
+        .map(r => `${r.level}:${r.name.trim().toLowerCase()}`),
+    )
+
+    const archetypeGains = (selectedArchetype?.gainedFeatures ?? [])
+      .filter((f): f is typeof f & { level: number; name: string } => typeof f.level === 'number' && f.level <= characterLevel)
+      .map(f => ({
+        level: f.level,
+        name: f.name,
+        description: f.description ?? '',
+      }))
+
+    return [...baseFeatures.filter(f => !replaced.has(`${f.level}:${f.name.trim().toLowerCase()}`)), ...archetypeGains]
       .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name))
-  }, [refClass, characterLevel])
+  }, [refClass, selectedArchetype, characterLevel])
 
   if (!className) return null
 
@@ -367,7 +391,7 @@ function ClassFeaturesPanel({
             </span>
           ) : (
             <span className="rounded-full bg-stone-800 border border-stone-700/60 px-2 py-0.5 text-[10px] text-stone-400">
-              {features.length} up to lv {characterLevel}
+              {features.length} up to lv {characterLevel}{selectedArchetype ? ` • ${selectedArchetype.name}` : ''}
             </span>
           )}
         </span>
