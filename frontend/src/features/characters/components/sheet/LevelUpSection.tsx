@@ -121,9 +121,15 @@ export function LevelUpSection() {
     return () => setLevelUpInProgress(false)
   }, [isWorkflowInProgress, setLevelUpInProgress])
 
+  useEffect(() => {
+    if (done.size === 0 && currentLevelAtStart !== null && d.level !== currentLevelAtStart) {
+      setCurrentLevelAtStart(null)
+    }
+  }, [done.size, currentLevelAtStart, d.level])
+
   // ── Action helpers ────────────────────────────────────────────────────────
 
-  function markDone(step: StepId) {
+  async function markDone(step: StepId) {
     // Auto-apply deterministic bonuses when marking done without clicking Apply.
     // BAB/saves are absolute table values (idempotent to re-apply), so this is safe.
     if (step === 'bab_saves') {
@@ -132,23 +138,24 @@ export function LevelUpSection() {
     }
 
     const newDone = new Set([...done, step])
+    const allStepsDone = activeSteps.every(s => newDone.has(s))
+
+    if (allStepsDone) {
+      setDone(new Set())
+      setExpanded(null)
+      setHpApplied(false)
+      setBabApplied(false)
+      setSavesApplied(false)
+      setLevelUpInProgress(false)
+      await save()
+      return
+    }
+
     setDone(newDone)
     // Auto-advance to next undone step
     const idx  = activeSteps.indexOf(step)
     const next = activeSteps.slice(idx + 1).find(s => !newDone.has(s))
     setExpanded(next ?? null)
-    // When all steps are done: save and reset the workflow for the next level
-    if (activeSteps.every(s => newDone.has(s))) {
-      setLevelUpInProgress(false)
-      save().then(() => {
-        setDone(new Set())
-        setExpanded('hp')
-        setHpApplied(false)
-        setBabApplied(false)
-        setSavesApplied(false)
-        setCurrentLevelAtStart(null)
-      })
-    }
   }
 
   function toggleExpand(step: StepId) {
@@ -390,7 +397,7 @@ function Step({ step, index, isDone, isExpanded, onToggle, onMarkDone, children 
           <Button
             variant="ghost" size="sm"
             className="text-emerald-500 hover:text-emerald-300 text-xs px-2 py-1 shrink-0"
-            onClick={e => { e.stopPropagation(); onMarkDone() }}
+            onClick={e => { e.stopPropagation(); void onMarkDone() }}
           >
             Mark done
           </Button>
