@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { SectionPanel }        from './SectionPanel'
 import { StatInput }           from './StatInput'
 import { Button }              from '@/components/ui/Button'
@@ -19,6 +19,11 @@ import { ABILITY_ABBR } from '@/lib/constants'
 const CASTING_STATS: AbilityScoreName[] = ['intelligence', 'wisdom', 'charisma']
 
 const SPELL_LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const
+
+function normalizeCastingAbility(value: string | null | undefined): AbilityScoreName | null {
+  const normalized = value?.trim().toLowerCase()
+  return CASTING_STATS.find(stat => stat === normalized) ?? null
+}
 
 export function SpellsSection() {
   const { data, update } = useCharacterSheet()
@@ -48,17 +53,27 @@ export function SpellsSection() {
   const castingTypeLabel      = getSpellcastingTypeLabel(refClass?.spellcastingType)
 
   // Recommended casting stat from reference class
-  const refCastingStatRaw = refClass?.castingStat?.toLowerCase() ?? null
-  const refCastingStat    = (['intelligence', 'wisdom', 'charisma'] as const)
-    .find(k => k === refCastingStatRaw) ?? null
+  const refCastingStat = normalizeCastingAbility(refClass?.castingStat)
+  const effectiveCastingStat = refCastingStat ?? spells.castingStat
 
   // ── Casting stat minimum enforcement ────────────────────────────────────
   // PF1e: to cast spells of level N, casting stat must be >= 10 + N
-  const castingStatScore  = stats[spells.castingStat].total
+  const castingStatScore  = stats[effectiveCastingStat].total
   const maxCastableLevel  = castingStatScore - 10   // 0 = cantrips only; <0 = none above cantrips
 
-  const castingMod = stats[spells.castingStat].modifier
+  const castingMod = stats[effectiveCastingStat].modifier
   const classKey   = inferClassKey(data.className)
+
+  useEffect(() => {
+    if (refCastingStat && spells.castingStat !== refCastingStat) {
+      updateSpells({ castingStat: refCastingStat })
+    }
+  }, [refCastingStat, spells.castingStat])
+
+  const availableCastingStats = useMemo(() => {
+    if (refCastingStat) return [refCastingStat]
+    return CASTING_STATS
+  }, [refCastingStat])
 
   function updateSpells(patch: Partial<SpellSection>) {
     update({ spells: { ...data!.spells, ...patch } })
@@ -155,10 +170,11 @@ export function SpellsSection() {
             </span>
             <select
               className="field w-32 text-sm py-1"
-              value={spells.castingStat}
+              value={effectiveCastingStat}
               onChange={e => updateSpells({ castingStat: e.target.value as AbilityScoreName })}
+              disabled={Boolean(refCastingStat)}
             >
-              {CASTING_STATS.map(s => (
+              {availableCastingStats.map(s => (
                 <option key={s} value={s}>{ABILITY_ABBR[s]} — {s}</option>
               ))}
             </select>
@@ -186,21 +202,20 @@ export function SpellsSection() {
         </div>
 
         {/* Recommended stat hint when stored stat differs from reference */}
-        {isCasterFromClass && refCastingStat && refCastingStat !== spells.castingStat && (
-          <p className="mt-2 text-xs text-amber-500/70 italic">
-            Reference class recommends {ABILITY_ABBR[refCastingStat]} as casting stat.
-            Update the selector above if this character uses {refCastingStat}.
+        {isCasterFromClass && refCastingStat && (
+          <p className="mt-2 text-xs text-stone-500 italic">
+            Casting stat is locked to {ABILITY_ABBR[refCastingStat]} from the selected reference class.
           </p>
         )}
 
         {/* Stat minimum info */}
         <p className="mt-2 text-[10px] text-stone-600">
-          {ABILITY_ABBR[spells.castingStat]} {castingStatScore} →
+          {ABILITY_ABBR[effectiveCastingStat]} {castingStatScore} →
           can cast up to{' '}
           {maxCastableLevel <= 0
             ? 'cantrips only'
             : `level ${Math.min(maxCastableLevel, 9)} spells`}
-          {' '}(need {ABILITY_ABBR[spells.castingStat]} ≥ 10 + spell level)
+          {' '}(need {ABILITY_ABBR[effectiveCastingStat]} ≥ 10 + spell level)
         </p>
       </SectionPanel>
 
@@ -300,7 +315,7 @@ export function SpellsSection() {
                 onClick={() => { if (!statTooLow) setActiveLevel(lvl) }}
                 disabled={statTooLow}
                 title={statTooLow
-                  ? `Requires ${ABILITY_ABBR[spells.castingStat]} ${10 + lvl} (currently ${castingStatScore})`
+                  ? `Requires ${ABILITY_ABBR[effectiveCastingStat]} ${10 + lvl} (currently ${castingStatScore})`
                   : undefined}
                 className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                   statTooLow
@@ -320,7 +335,7 @@ export function SpellsSection() {
         {/* Stat-too-low warning for active level */}
         {levelIsLocked && (
           <p className="text-xs text-amber-500/70 italic mb-3">
-            {ABILITY_ABBR[spells.castingStat]} {castingStatScore} is too low for level {activeLevel} spells
+            {ABILITY_ABBR[effectiveCastingStat]} {castingStatScore} is too low for level {activeLevel} spells
             — requires {10 + activeLevel}+.
           </p>
         )}
