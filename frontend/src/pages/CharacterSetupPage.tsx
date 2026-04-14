@@ -708,6 +708,10 @@ function SpellsSetupStep({
   castingStat:  string | null
   level:        number
 }) {
+  const normalizedSpellsPerDay = (spellsPerDay ?? [])
+    .map(count => count?.trim?.() ?? count)
+    .filter(count => count !== '' && count !== '-' && count !== '—')
+
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3">
@@ -715,11 +719,11 @@ function SpellsSetupStep({
         {castingStat && <InfoChip label="Casting Stat" value={castingStat.toUpperCase()} />}
       </div>
 
-      {spellsPerDay && spellsPerDay.length > 0 ? (
+      {normalizedSpellsPerDay.length > 0 ? (
         <div className="flex flex-col gap-2">
           <SubLabel>Spells per Day at Level {level}</SubLabel>
           <div className="flex flex-wrap gap-2">
-            {spellsPerDay.map((count, idx) => {
+            {normalizedSpellsPerDay.map((count, idx) => {
               const spellLevel = idx + 1
               return (
                 <div
