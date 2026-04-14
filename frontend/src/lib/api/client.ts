@@ -4,6 +4,7 @@
 
 import axios from 'axios'
 import type { AxiosError } from 'axios'
+import { useAuthStore } from '@/app/store/authStore'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
@@ -23,7 +24,16 @@ function withErrorInterceptor(client: ReturnType<typeof axios.create>) {
   client.interceptors.response.use(
     (res) => res,
     (err: AxiosError<ApiErrorBody>) => {
+      const status = err.response?.status
       const backendMessage = err.response?.data?.error
+
+      if (status === 401) {
+        const message = (backendMessage ?? '').toLowerCase()
+        if (message.includes('session expired') || message.includes('not authenticated') || message.includes('session not found')) {
+          useAuthStore.getState().handleSessionExpired()
+        }
+      }
+
       if (backendMessage) {
         return Promise.reject(new Error(backendMessage))
       }

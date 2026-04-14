@@ -9,24 +9,28 @@ interface AuthState {
   user: AuthUser | null
   isLoading: boolean
   isInitialized: boolean
+  sessionExpired: boolean
 
   login(email: string, password: string): Promise<void>
   register(email: string, password: string, displayName: string): Promise<void>
   logout(): Promise<void>
   initialize(): Promise<void>
+  handleSessionExpired(): void
+  clearSessionExpired(): void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoading: false,
   isInitialized: false,
+  sessionExpired: false,
 
   // ── Initialize (call /me on boot) ──────────────────────────────────────
   initialize: async () => {
     set({ isLoading: true })
     try {
       const user = await authService.me()
-      set({ user, isLoading: false, isInitialized: true })
+      set({ user, isLoading: false, isInitialized: true, sessionExpired: false })
     } catch {
       set({ user: null, isLoading: false, isInitialized: true })
     }
@@ -37,7 +41,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true })
     try {
       const user = await authService.login(email, password)
-      set({ user, isLoading: false })
+      set({ user, isLoading: false, sessionExpired: false })
     } catch (err) {
       set({ isLoading: false })
       throw err
@@ -62,7 +66,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await authService.logout()
     } finally {
-      set({ user: null, isLoading: false })
+      set({ user: null, isLoading: false, sessionExpired: false })
     }
+  },
+
+  handleSessionExpired: () => {
+    set({ user: null, isLoading: false, isInitialized: true, sessionExpired: true })
+  },
+
+  clearSessionExpired: () => {
+    set({ sessionExpired: false })
   },
 }))

@@ -2,16 +2,17 @@
 // Login Page
 // ---------------------------------------------------------------------------
 
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '@/app/store/authStore'
 import { authService } from '@/features/auth/services/auth.service'
 import { Button } from '@/components/ui/Button'
 import { AuthBrand } from '@/components/ui/AuthBrand'
 
 export function LoginPage() {
-  const { login, isLoading } = useAuthStore()
+  const { login, isLoading, clearSessionExpired } = useAuthStore()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
@@ -21,13 +22,20 @@ export function LoginPage() {
   const [resendSent,   setResendSent]   = useState(false)
   const [resendLoading, setResendLoading] = useState(false)
 
+  const sessionExpired = searchParams.get('reason') === 'expired'
+  const nextPath = searchParams.get('next') || '/'
+
+  useEffect(() => {
+    if (sessionExpired) clearSessionExpired()
+  }, [sessionExpired, clearSessionExpired])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setShowResend(false)
     try {
       await login(email, password)
-      navigate('/', { replace: true })
+      navigate(nextPath, { replace: true })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Login failed'
       setError(msg)
@@ -59,6 +67,12 @@ export function LoginPage() {
         {/* Card */}
         <div className="bg-stone-800 border border-stone-700 rounded-lg p-6">
           <h2 className="text-stone-100 font-semibold text-lg mb-5">Sign in</h2>
+
+          {sessionExpired && (
+            <div className="mb-4 rounded border border-amber-700/40 bg-amber-900/20 px-3 py-2 text-sm text-amber-200">
+              Your session expired. Please sign in again, your hunter’s paperwork was not very durable.
+            </div>
+          )}
 
           {resendSent && (
             <div className="mb-4 rounded border border-emerald-700/40 bg-emerald-900/20 px-3 py-2 text-sm text-emerald-300">
