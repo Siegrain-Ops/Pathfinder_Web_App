@@ -52,9 +52,11 @@ const ABILITY_ROWS: { key: AbilityKey; abbr: string; label: string }[] = [
   { key: 'charisma',     abbr: 'CHA', label: 'Charisma'     },
 ]
 
-const STANDARD_ARRAY: Record<AbilityKey, number> = {
-  strength: 15, dexterity: 14, constitution: 13,
-  intelligence: 12, wisdom: 10, charisma: 8,
+const STANDARD_ARRAY_VALUES = [15, 14, 13, 12, 10, 8] as const
+
+const DEFAULT_LOCAL_STATS: Record<AbilityKey, number> = {
+  strength: 10, dexterity: 10, constitution: 10,
+  intelligence: 10, wisdom: 10, charisma: 10,
 }
 
 type StepId = 'stats' | 'hp' | 'bab_saves' | 'features' | 'feat' | 'spells'
@@ -99,10 +101,7 @@ export function CharacterSetupPage() {
   )
 
   // ── Local stats state (before applying to character) ─────────────────────
-  const [localStats, setLocalStats] = useState<Record<AbilityKey, number>>({
-    strength: 10, dexterity: 10, constitution: 10,
-    intelligence: 10, wisdom: 10, charisma: 10,
-  })
+  const [localStats, setLocalStats] = useState<Record<AbilityKey, number>>(DEFAULT_LOCAL_STATS)
 
   // ── Step state ────────────────────────────────────────────────────────────
   const [done,         setDone]         = useState<Set<StepId>>(new Set())
@@ -416,28 +415,53 @@ function StatsStep({
   onApply:    () => void
   applied:    boolean
 }) {
+  const [mode, setMode] = useState<'manual' | 'standard_array' | 'rolled'>('manual')
+  const [availableValues, setAvailableValues] = useState<number[]>([])
+
   function setOne(key: AbilityKey, val: number) {
     onChange({ ...localStats, [key]: Math.max(3, Math.min(20, val)) })
   }
 
+  function assignValue(key: AbilityKey, nextValue: number) {
+    const previousValue = localStats[key]
+    const nextPool = [...availableValues]
+    const pickedIndex = nextPool.findIndex(value => value === nextValue)
+    if (pickedIndex === -1) return
+
+    nextPool.splice(pickedIndex, 1)
+    if (previousValue !== 10) nextPool.push(previousValue)
+    nextPool.sort((a, b) => b - a)
+
+    onChange({ ...localStats, [key]: nextValue })
+    setAvailableValues(nextPool)
+  }
+
   function rollOne(key: AbilityKey) {
+    if (mode !== 'manual') return
     setOne(key, roll4d6DropLowest())
   }
 
-  function rollAll() {
-    const next = { ...localStats }
-    for (const row of ABILITY_ROWS) {
-      next[row.key] = roll4d6DropLowest()
-    }
-    onChange(next)
+  function startStandardArray() {
+    setMode('standard_array')
+    setAvailableValues([...STANDARD_ARRAY_VALUES])
+    onChange({ ...DEFAULT_LOCAL_STATS })
   }
 
-  function applyStandardArray() {
-    onChange({ ...STANDARD_ARRAY })
+  function startRolledArray() {
+    setMode('rolled')
+    const rolled = ABILITY_ROWS.map(() => roll4d6DropLowest()).sort((a, b) => b - a)
+    setAvailableValues(rolled)
+    onChange({ ...DEFAULT_LOCAL_STATS })
+  }
+
+  function switchToManual() {
+    setMode('manual')
+    setAvailableValues([])
   }
 
   const total   = Object.values(localStats).reduce((s, n) => s + n, 0)
   const average = (total / 6).toFixed(1)
+  const needsAssignment = mode !== 'manual' && availableValues.length > 0
 
   return (
     <div className="flex flex-col gap-4">
@@ -447,17 +471,36 @@ function StatsStep({
         the most common balanced option.
       </p>
 
-      {/* Preset buttons */}
       <div className="flex gap-2 flex-wrap">
-        <Button size="sm" variant="secondary" onClick={applyStandardArray}>
+        <Button size="sm" variant={mode === 'standard_array' ? 'primary' : 'secondary'} onClick={startStandardArray}>
           Standard Array
         </Button>
-        <Button size="sm" variant="secondary" onClick={rollAll}>
-          Roll All (4d6 drop lowest)
+        <Button size="sm" variant={mode === 'rolled' ? 'primary' : 'secondary'} onClick={startRolledArray}>
+          Roll 6 Scores
+        </Button>
+        <Button size="sm" variant={mode === 'manual' ? 'primary' : 'secondary'} onClick={switchToManual}>
+          Manual Entry
         </Button>
       </div>
 
-      {/* Stat rows */}
+      {mode !== 'manual' && (
+        <div className="rounded-lg border border-amber-800/30 bg-amber-950/10 px-3 py-3">
+          <p className="text-xs text-stone-400">
+            Assign the generated values to the abilities you want.
+            {needsAssignment ? ' Pick a value from the dropdown on each row.' : ' All values assigned.'}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {availableValues.length > 0 ? availableValues.map((value, idx) => (
+              <span key={`${value}-${idx}`} className="rounded-full border border-amber-700/40 bg-stone-900/70 px-2.5 py-1 text-xs font-mono text-amber-300">
+                {value}
+              </span>
+            )) : (
+              <span className="text-xs text-emerald-400 italic">All scores assigned.</span>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-1.5">
         {ABILITY_ROWS.map(({ key, abbr, label }) => {
           const val = localStats[key]
@@ -466,21 +509,37 @@ function StatsStep({
             <div key={key} className="flex items-center gap-3 rounded-lg border border-stone-700/50 bg-stone-900/60 px-3 py-2">
               <span className="w-8 text-xs font-bold text-stone-400 uppercase shrink-0">{abbr}</span>
               <span className="flex-1 text-xs text-stone-500 hidden sm:block">{label}</span>
-              <button
-                onClick={() => rollOne(key)}
-                className="text-[11px] text-stone-500 hover:text-amber-400 active:text-amber-300 transition-colors px-2 py-1 rounded"
-                title="Roll 4d6 drop lowest"
-              >
-                🎲 Roll
-              </button>
-              <input
-                type="number"
-                min={3}
-                max={20}
-                value={val}
-                onChange={e => setOne(key, parseInt(e.target.value, 10) || 10)}
-                className="w-16 text-center bg-stone-800 border border-stone-600/60 rounded-md text-sm font-bold text-stone-100 py-1.5 tabular-nums"
-              />
+              {mode === 'manual' ? (
+                <>
+                  <button
+                    onClick={() => rollOne(key)}
+                    className="text-[11px] text-stone-500 hover:text-amber-400 active:text-amber-300 transition-colors px-2 py-1 rounded"
+                    title="Roll 4d6 drop lowest"
+                  >
+                    🎲 Roll
+                  </button>
+                  <input
+                    type="number"
+                    min={3}
+                    max={20}
+                    value={val}
+                    onChange={e => setOne(key, parseInt(e.target.value, 10) || 10)}
+                    className="w-16 text-center bg-stone-800 border border-stone-600/60 rounded-md text-sm font-bold text-stone-100 py-1.5 tabular-nums"
+                  />
+                </>
+              ) : (
+                <select
+                  value={val === 10 ? '' : String(val)}
+                  onChange={e => assignValue(key, parseInt(e.target.value, 10))}
+                  className="w-28 bg-stone-800 border border-stone-600/60 rounded-md text-sm font-bold text-stone-100 py-1.5 px-2"
+                >
+                  <option value="">Assign…</option>
+                  {val !== 10 && <option value={val}>{val} (current)</option>}
+                  {availableValues.map((value, idx) => (
+                    <option key={`${key}-${value}-${idx}`} value={value}>{value}</option>
+                  ))}
+                </select>
+              )}
               <span className={clsx(
                 'w-10 text-center text-sm font-bold tabular-nums shrink-0',
                 mod > 0 ? 'text-emerald-400' : mod < 0 ? 'text-red-400' : 'text-stone-400',
@@ -492,16 +551,21 @@ function StatsStep({
         })}
       </div>
 
-      {/* Summary */}
       <div className="flex items-center gap-4 text-xs text-stone-500">
         <span>Total: <strong className="text-stone-300">{total}</strong></span>
         <span>Average: <strong className="text-stone-300">{average}</strong></span>
       </div>
 
+      {needsAssignment && (
+        <p className="text-xs text-amber-500/80 italic">
+          Assign all generated values before applying ability scores.
+        </p>
+      )}
+
       {applied ? (
         <p className="text-xs text-amber-500/80 italic">✓ Ability scores applied to character.</p>
       ) : (
-        <Button size="sm" onClick={onApply} className="self-start">
+        <Button size="sm" onClick={onApply} className="self-start" disabled={needsAssignment}>
           Apply Ability Scores
         </Button>
       )}
