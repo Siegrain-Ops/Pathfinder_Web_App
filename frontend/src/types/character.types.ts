@@ -98,6 +98,12 @@ export interface FamiliarCombat {
 export type FavoredClassBonus = 'hp' | 'skill_rank'
 
 /** Full character sheet data (stored as JSON in the DB). */
+export interface AlternativeRacialTrait {
+  name: string
+  description: string
+  replaces?: string[]
+}
+
 export interface CharacterData {
   // ── Identity ─────────────────────────────────────────────
   name:        string
@@ -140,6 +146,7 @@ export interface CharacterData {
   // ── Miscellaneous ────────────────────────────────────────
   languages:    string[]
   notes:        string
+  alternativeRacialTraits?: AlternativeRacialTrait[]
 
   // ── Progression preference ────────────────────────────────
   /** Favored class bonus chosen at creation; absent on older characters → treat as 'hp'. */

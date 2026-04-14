@@ -4,7 +4,7 @@ import { SectionPanel }      from './SectionPanel'
 import { Button }            from '@/components/ui/Button'
 import { useCharacterSheet } from '../../hooks/useCharacterSheet'
 import { useReferenceClasses } from '../../hooks/useReferenceClasses'
-import type { ClassOptions, FavoredClassBonus, ReferenceRace } from '@/types'
+import type { AlternativeRacialTrait, ClassOptions, FavoredClassBonus, ReferenceRace } from '@/types'
 import { useReferenceRaces }      from '../../hooks/useReferenceRaces'
 import { useReferenceArchetypes } from '../../hooks/useReferenceArchetypes'
 import { useReferenceBloodlines } from '../../hooks/useReferenceBloodlines'
@@ -80,6 +80,29 @@ function extractRaceSkillBonuses(race: ReferenceRace | null): Record<string, num
   return bonuses
 }
 
+function extractAlternativeRacialTraits(race: ReferenceRace | null): AlternativeRacialTrait[] {
+  if (!race?.traits) return []
+
+  return race.traits.flatMap(trait => {
+    const name = trait.name?.trim()
+    const description = trait.description?.trim()
+    const normalized = normalizeText([name, description].filter(Boolean).join(' '))
+
+    if (!name || !description) return []
+    if (!normalized.includes('replaces')) return []
+
+    const replaceMatch = description.match(/replaces?\s+([^.;]+)/i)
+    const replaces = replaceMatch
+      ? replaceMatch[1]
+          .split(/,| and /i)
+          .map(part => part.replace(/[.]/g, '').trim())
+          .filter(Boolean)
+      : []
+
+    return [{ name, description, replaces }]
+  })
+}
+
 export function OverviewSection() {
   const { data, update, setReferenceRaceId } = useCharacterSheet()
   const { classes, isLoading: classesLoading } = useReferenceClasses()
@@ -106,10 +129,13 @@ export function OverviewSection() {
   const d = data
   const raceOptions = races.length > 0 ? races.map(race => race.name) : COMMON_RACES
   const classOptions = classes.length > 0 ? classes.map(classRecord => classRecord.name) : COMMON_CLASSES
-  const raceSkillBonuses = useMemo(() => {
-    const selectedRace = races.find(race => race.id === d.referenceRaceId) ?? races.find(race => race.name === d.race) ?? null
-    return extractRaceSkillBonuses(selectedRace)
-  }, [races, d.referenceRaceId, d.race])
+  const selectedRace = useMemo(
+    () => races.find(race => race.id === d.referenceRaceId) ?? races.find(race => race.name === d.race) ?? null,
+    [races, d.referenceRaceId, d.race],
+  )
+
+  const raceSkillBonuses = useMemo(() => extractRaceSkillBonuses(selectedRace), [selectedRace])
+  const alternativeRacialTraits = useMemo(() => extractAlternativeRacialTraits(selectedRace), [selectedRace])
 
   useEffect(() => {
     const nextSkills = d.skills.map(skill => ({
@@ -117,9 +143,16 @@ export function OverviewSection() {
       racialBonus: raceSkillBonuses[skill.id] ?? 0,
     }))
 
-    const changed = nextSkills.some((skill, idx) => skill.racialBonus !== d.skills[idx]?.racialBonus)
-    if (changed) update({ skills: nextSkills })
-  }, [d.skills, raceSkillBonuses, update])
+    const skillsChanged = nextSkills.some((skill, idx) => skill.racialBonus !== d.skills[idx]?.racialBonus)
+    const traitsChanged = JSON.stringify(d.alternativeRacialTraits ?? []) !== JSON.stringify(alternativeRacialTraits)
+
+    if (skillsChanged || traitsChanged) {
+      update({
+        skills: nextSkills,
+        alternativeRacialTraits,
+      })
+    }
+  }, [d.skills, d.alternativeRacialTraits, raceSkillBonuses, alternativeRacialTraits, update])
 
   function field(key: keyof typeof d) {
     return {
@@ -231,6 +264,33 @@ export function OverviewSection() {
             </FormField>
           </div>
         </div>
+
+        {selectedRace && alternativeRacialTraits.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <SubHeader>Alternative Racial Traits</SubHeader>
+            <div className="rounded-xl border border-stone-700/50 bg-stone-900/40 px-4 py-4 flex flex-col gap-3">
+              <p className="text-xs text-stone-500">
+                Parsed from the reference race entry for <strong className="text-stone-300">{selectedRace.name}</strong>.
+                These are surfaced so they are not lost in the archive sludge.
+              </p>
+              <div className="flex flex-col gap-2">
+                {alternativeRacialTraits.map(trait => (
+                  <div key={trait.name} className="rounded-lg border border-stone-700/60 bg-stone-950/40 px-3 py-3">
+                    <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                      <span className="text-sm font-medium text-stone-200">{trait.name}</span>
+                      {trait.replaces && trait.replaces.length > 0 && (
+                        <span className="text-[10px] rounded-full border border-amber-700/40 bg-amber-950/20 px-2 py-0.5 text-amber-300">
+                          Replaces: {trait.replaces.join(', ')}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-stone-400 leading-relaxed">{trait.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Background & Lore ─────────────────────────────── */}
         <div className="flex flex-col gap-3">
