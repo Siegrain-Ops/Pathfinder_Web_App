@@ -1,10 +1,10 @@
-import { useState }          from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { clsx }              from 'clsx'
 import { SectionPanel }      from './SectionPanel'
 import { Button }            from '@/components/ui/Button'
 import { useCharacterSheet } from '../../hooks/useCharacterSheet'
 import { useReferenceClasses } from '../../hooks/useReferenceClasses'
-import type { ClassOptions, FavoredClassBonus } from '@/types'
+import type { ClassOptions, FavoredClassBonus, ReferenceRace } from '@/types'
 import { useReferenceRaces }      from '../../hooks/useReferenceRaces'
 import { useReferenceArchetypes } from '../../hooks/useReferenceArchetypes'
 import { useReferenceBloodlines } from '../../hooks/useReferenceBloodlines'
@@ -19,8 +19,66 @@ const WIZARD_CLASSES     = ['wizard']
 const TWO_DOMAIN_CLASSES = ['cleric']
 const BONDED_ITEM_KINDS  = ['Amulet', 'Ring', 'Staff', 'Wand', 'Sword', 'Dagger', 'Axe', 'Bow', 'Other'] as const
 const FAMILIAR_KINDS     = ['Bat', 'Cat', 'Fox', 'Hawk', 'Lizard', 'Monkey', 'Owl', 'Rat', 'Raven', 'Snake', 'Toad', 'Weasel', 'Other'] as const
+const SKILL_NAME_ALIASES: Record<string, string[]> = {
+  perception: ['perception'],
+  stealth: ['stealth'],
+  survival: ['survival'],
+  bluff: ['bluff'],
+  diplomacy: ['diplomacy'],
+  intimidate: ['intimidate'],
+  sense_motive: ['sense motive'],
+  acrobatics: ['acrobatics'],
+  climb: ['climb'],
+  swim: ['swim'],
+  knowledge_arcana: ['knowledge arcana'],
+  knowledge_dungeoneering: ['knowledge dungeoneering'],
+  knowledge_engineering: ['knowledge engineering'],
+  knowledge_geography: ['knowledge geography'],
+  knowledge_history: ['knowledge history'],
+  knowledge_local: ['knowledge local'],
+  knowledge_nature: ['knowledge nature'],
+  knowledge_nobility: ['knowledge nobility'],
+  knowledge_planes: ['knowledge planes'],
+  knowledge_religion: ['knowledge religion'],
+  spellcraft: ['spellcraft'],
+  appraise: ['appraise'],
+  disable_device: ['disable device'],
+  ride: ['ride'],
+  handle_animal: ['handle animal'],
+  heal: ['heal'],
+  linguistics: ['linguistics'],
+  profession: ['profession'],
+  craft: ['craft'],
+  perform: ['perform'],
+  use_magic_device: ['use magic device'],
+}
 function classKey(n: string) { return n.toLowerCase() }
 function domainCount(cls: string) { return TWO_DOMAIN_CLASSES.includes(classKey(cls)) ? 2 : 1 }
+function normalizeText(value: string) { return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() }
+function extractRaceSkillBonuses(race: ReferenceRace | null): Record<string, number> {
+  if (!race?.traits) return {}
+
+  const bonuses: Record<string, number> = {}
+
+  for (const trait of race.traits) {
+    const text = [trait.name, trait.description].filter(Boolean).join(' ')
+    const normalized = normalizeText(text)
+    const match = normalized.match(/\+([0-9]+)\s+racial bonus(?:es)?\s+on\s+([^.]*)\s+checks?/i)
+    if (!match) continue
+
+    const bonus = Number.parseInt(match[1], 10)
+    const skillsPart = match[2]
+    if (!Number.isFinite(bonus)) continue
+
+    for (const [skillId, aliases] of Object.entries(SKILL_NAME_ALIASES)) {
+      if (aliases.some(alias => skillsPart.includes(alias))) {
+        bonuses[skillId] = Math.max(bonuses[skillId] ?? 0, bonus)
+      }
+    }
+  }
+
+  return bonuses
+}
 
 export function OverviewSection() {
   const { data, update, setReferenceRaceId } = useCharacterSheet()
@@ -48,6 +106,20 @@ export function OverviewSection() {
   const d = data
   const raceOptions = races.length > 0 ? races.map(race => race.name) : COMMON_RACES
   const classOptions = classes.length > 0 ? classes.map(classRecord => classRecord.name) : COMMON_CLASSES
+  const raceSkillBonuses = useMemo(() => {
+    const selectedRace = races.find(race => race.id === d.referenceRaceId) ?? races.find(race => race.name === d.race) ?? null
+    return extractRaceSkillBonuses(selectedRace)
+  }, [races, d.referenceRaceId, d.race])
+
+  useEffect(() => {
+    const nextSkills = d.skills.map(skill => ({
+      ...skill,
+      racialBonus: raceSkillBonuses[skill.id] ?? 0,
+    }))
+
+    const changed = nextSkills.some((skill, idx) => skill.racialBonus !== d.skills[idx]?.racialBonus)
+    if (changed) update({ skills: nextSkills })
+  }, [d.skills, raceSkillBonuses, update])
 
   function field(key: keyof typeof d) {
     return {
