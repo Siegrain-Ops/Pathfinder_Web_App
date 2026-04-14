@@ -130,6 +130,12 @@ function normalizeFeatureName(value: string | null | undefined): string | null {
   const cleaned = value
     ?.replace(/[–—−]/g, '-')
     .replace(/\s*\((?:ex|su|sp)\)\s*$/i, '')
+    .replace(/\(([^)]+)\)/g, ' $1 ')
+    .replace(/[/:;,]+/g, ' ')
+    .replace(/\b\d+\/day\b/gi, '')
+    .replace(/\bat\s+\d+(?:st|nd|rd|th)\s+level\b/gi, '')
+    .replace(/\b\d+(?:st|nd|rd|th)-level\b/gi, '')
+    .replace(/\b(?:gained|gain|gains)\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim()
 
@@ -142,5 +148,11 @@ function normalizeFeatureDescription(value: string | null | undefined): string |
 }
 
 function makeFeatureKey(level: number | null, name: string | null): string {
-  return `${level ?? 'unknown'}::${(name ?? '').toLowerCase()}`
+  const normalizedName = (name ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return `${level ?? 'unknown'}::${normalizedName}`
 }
