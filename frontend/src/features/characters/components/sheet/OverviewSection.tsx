@@ -55,6 +55,25 @@ const SKILL_NAME_ALIASES: Record<string, string[]> = {
 function classKey(n: string) { return n.toLowerCase() }
 function domainCount(cls: string) { return TWO_DOMAIN_CLASSES.includes(classKey(cls)) ? 2 : 1 }
 function normalizeText(value: string) { return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() }
+
+function areAlternativeRacialTraitsEqual(
+  left: AlternativeRacialTrait[] | undefined,
+  right: AlternativeRacialTrait[],
+): boolean {
+  if ((left?.length ?? 0) !== right.length) return false
+
+  return (left ?? []).every((trait, index) => {
+    const other = right[index]
+    if (!other) return false
+    if (trait.name !== other.name || trait.description !== other.description) return false
+
+    const leftReplaces = trait.replaces ?? []
+    const rightReplaces = other.replaces ?? []
+    if (leftReplaces.length !== rightReplaces.length) return false
+    return leftReplaces.every((value, replaceIndex) => value === rightReplaces[replaceIndex])
+  })
+}
+
 function extractRaceSkillBonuses(race: ReferenceRace | null): Record<string, number> {
   if (!race?.traits) return {}
 
@@ -144,7 +163,7 @@ export function OverviewSection() {
     }))
 
     const skillsChanged = nextSkills.some((skill, idx) => skill.racialBonus !== d.skills[idx]?.racialBonus)
-    const traitsChanged = JSON.stringify(d.alternativeRacialTraits ?? []) !== JSON.stringify(alternativeRacialTraits)
+    const traitsChanged = !areAlternativeRacialTraitsEqual(d.alternativeRacialTraits, alternativeRacialTraits)
 
     if (skillsChanged || traitsChanged) {
       update({
