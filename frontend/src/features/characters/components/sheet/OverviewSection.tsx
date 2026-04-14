@@ -80,8 +80,7 @@ function extractRaceSkillBonuses(race: ReferenceRace | null): Record<string, num
   const bonuses: Record<string, number> = {}
 
   for (const trait of race.traits) {
-    const text = [trait.name, trait.description].filter(Boolean).join(' ')
-    const normalized = normalizeText(text)
+    const normalized = normalizeText([trait.name, trait.description].filter(Boolean).join(' '))
     const match = normalized.match(/\+([0-9]+)\s+racial bonus(?:es)?\s+on\s+([^.]*)\s+checks?/i)
     if (!match) continue
 
