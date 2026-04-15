@@ -122,7 +122,7 @@ function extractAlternativeRacialTraits(race: ReferenceRace | null): Alternative
 }
 
 export function OverviewSection() {
-  const { data, update, setReferenceRaceId } = useCharacterSheet()
+  const { data, referenceRaceId, update, setReferenceRaceId } = useCharacterSheet()
   const { classes, isLoading: classesLoading } = useReferenceClasses()
   const { races,   isLoading: racesLoading   } = useReferenceRaces()
   const [isLocked, setIsLocked] = useState(true)
@@ -148,8 +148,8 @@ export function OverviewSection() {
   const raceOptions = races.length > 0 ? races.map(race => race.name) : COMMON_RACES
   const classOptions = classes.length > 0 ? classes.map(classRecord => classRecord.name) : COMMON_CLASSES
   const selectedRace = useMemo(
-    () => races.find(race => race.id === d.referenceRaceId) ?? races.find(race => race.name === d.race) ?? null,
-    [races, d.referenceRaceId, d.race],
+    () => races.find(race => race.id === referenceRaceId) ?? races.find(race => race.name === d.race) ?? null,
+    [races, referenceRaceId, d.race],
   )
 
   const raceSkillBonuses = useMemo(() => extractRaceSkillBonuses(selectedRace), [selectedRace])

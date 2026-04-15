@@ -23,13 +23,14 @@ export function useCharacterSheet() {
   }
 
   return {
-    data:      active?.data ?? null,
+    data: active?.data ?? null,
+    referenceRaceId: active?.referenceRaceId ?? null,
     isDirty,
     isSaving,
     isLevelUpInProgress,
     update,
     setReferenceRaceId,
     setLevelUpInProgress,
-    save:      saveCharacter,
+    save: saveCharacter,
   }
 }
