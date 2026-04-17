@@ -7,6 +7,10 @@ import { Resend } from 'resend'
 const FROM    = process.env.MAIL_FROM    ?? 'PathLegends <noreply@example.com>'
 const baseUrl = process.env.APP_BASE_URL ?? 'http://localhost:5173'
 
+function hasEmailProvider(): boolean {
+  return Boolean(process.env.RESEND_API_KEY)
+}
+
 function getResendClient(): Resend {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
@@ -48,11 +52,20 @@ function primaryButton(href: string, label: string): string {
 // ── Email senders ────────────────────────────────────────────────────────────
 
 export const emailService = {
+  isConfigured(): boolean {
+    return hasEmailProvider()
+  },
+
   async sendVerificationEmail(
     toEmail: string,
     displayName: string,
     token: string,
   ): Promise<void> {
+    if (!hasEmailProvider()) {
+      console.warn('[auth email] RESEND_API_KEY missing, skipping verification email send')
+      return
+    }
+
     const url = `${baseUrl}/verify-email?token=${token}`
     const resend = getResendClient()
 
@@ -80,6 +93,11 @@ export const emailService = {
     displayName: string,
     token: string,
   ): Promise<void> {
+    if (!hasEmailProvider()) {
+      console.warn('[auth email] RESEND_API_KEY missing, skipping password reset email send')
+      return
+    }
+
     const url = `${baseUrl}/reset-password?token=${token}`
     const resend = getResendClient()
 

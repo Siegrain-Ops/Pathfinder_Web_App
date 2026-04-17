@@ -59,15 +59,20 @@ export const authController = {
       const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS)
       const user = await authRepository.createUser(email, passwordHash, displayName)
 
-      // Send verification email
-      const token     = generateToken()
-      const tokenHash = hashToken(token)
-      const expiresAt = tokenExpiry(24)
+      if (emailService.isConfigured()) {
+        const token     = generateToken()
+        const tokenHash = hashToken(token)
+        const expiresAt = tokenExpiry(24)
 
-      await authRepository.createEmailVerificationToken(user.id, tokenHash, expiresAt)
-      await emailService.sendVerificationEmail(email, displayName, token)
+        await authRepository.createEmailVerificationToken(user.id, tokenHash, expiresAt)
+        await emailService.sendVerificationEmail(email, displayName, token)
 
-      ok(res, { message: 'Registration successful. Please check your email to verify your account.' }, 202)
+        ok(res, { message: 'Registration successful. Please check your email to verify your account.' }, 202)
+        return
+      }
+
+      await authRepository.markUserEmailVerified(user.id)
+      ok(res, { message: 'Registration successful. Email verification is currently disabled.' }, 201)
     } catch (err) { next(err) }
   },
 
@@ -181,6 +186,11 @@ export const authController = {
         throw new AppError(429, 'A verification email was sent recently. Please wait before requesting another.')
       }
 
+      if (!emailService.isConfigured()) {
+        ok(res, { message: 'Email verification is currently disabled.' })
+        return
+      }
+
       // Delete old tokens, issue a fresh one
       await authRepository.deleteEmailVerificationTokensByUserId(user.id)
 
@@ -206,6 +216,11 @@ export const authController = {
       // Always respond with success to avoid leaking account existence
       if (!user) {
         ok(res, { message: 'If an account exists for that email, a reset link has been sent.' })
+        return
+      }
+
+      if (!emailService.isConfigured()) {
+        ok(res, { message: 'Password reset email is currently disabled.' })
         return
       }
 
