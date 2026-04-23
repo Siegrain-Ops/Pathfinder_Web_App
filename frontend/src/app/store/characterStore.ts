@@ -111,8 +111,8 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
 
   // ── Save active character ──────────────────────────────────────────────
   saveCharacter: async () => {
-    const { active, isLevelUpInProgress } = get()
-    if (!active || isLevelUpInProgress) return
+    const { active } = get()
+    if (!active) return
     set({ isSaving: true })
     try {
       const savedWithRace = await characterService.update(active.id, {

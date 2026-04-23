@@ -131,7 +131,11 @@ export function LevelUpSection() {
 
   async function markDone(step: StepId) {
     // Auto-apply deterministic bonuses when marking done without clicking Apply.
-    // BAB/saves are absolute table values (idempotent to re-apply), so this is safe.
+    // HP/BAB/saves are safe to resolve here and should not depend on a separate click.
+    if (step === 'hp' && !isHpApplied) {
+      applyHp()
+    }
+
     if (step === 'bab_saves') {
       if (!babApplied) applyBab()
       if (!savesApplied) applySaves()
@@ -765,7 +769,7 @@ function SpellsStep({
           <SubLabel>Spells per Day at Level {level}</SubLabel>
           <div className="flex flex-wrap gap-2">
             {normalizedSpellsPerDay.map((count, idx) => {
-              const spellLevel = idx + 1
+              const spellLevel = idx
               return (
                 <div key={idx} className="flex flex-col items-center rounded-lg border border-stone-700/60 bg-stone-900/60 px-3 py-2 min-w-[48px]">
                   <span className="text-xs text-stone-500 uppercase tracking-wide">L{spellLevel}</span>

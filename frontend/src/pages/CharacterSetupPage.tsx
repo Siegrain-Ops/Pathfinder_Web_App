@@ -161,6 +161,20 @@ export function CharacterSetupPage() {
   // ── Actions ───────────────────────────────────────────────────────────────
 
   function markDone(step: StepId) {
+    if (step === 'stats' && !statsApplied) {
+      applyStats()
+    }
+
+    if (step === 'hp' && !hpApplied) {
+      if (!statsApplied) applyStats()
+      applyHp()
+    }
+
+    if (step === 'bab_saves') {
+      if (!babApplied) applyBab()
+      if (!savesApplied) applySaves()
+    }
+
     const newDone = new Set([...done, step])
     setDone(newDone)
     const idx  = activeSteps.indexOf(step)
@@ -788,7 +802,7 @@ function SpellsSetupStep({
           <SubLabel>Spells per Day at Level {level}</SubLabel>
           <div className="flex flex-wrap gap-2">
             {normalizedSpellsPerDay.map((count, idx) => {
-              const spellLevel = idx + 1
+              const spellLevel = idx
               return (
                 <div
                   key={idx}

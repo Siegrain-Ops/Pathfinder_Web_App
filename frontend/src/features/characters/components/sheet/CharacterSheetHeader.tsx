@@ -144,10 +144,8 @@ export function CharacterSheetHeader() {
             variant="primary"
             size="sm"
             loading={isSaving}
-            disabled={isLevelUpInProgress}
             onClick={() => void save()}
             className="shrink-0"
-            title={isLevelUpInProgress ? 'Complete the current level-up workflow before saving changes.' : undefined}
           >
             Save
           </Button>
@@ -175,7 +173,7 @@ export function CharacterSheetHeader() {
           </div>
           {isLevelUpInProgress && (
             <p className="mt-1 text-xs text-amber-400/80">
-              Finish the current level-up workflow before saving changes.
+              Level-up workflow in progress — you can save partial changes if needed.
             </p>
           )}
         </div>
@@ -219,10 +217,8 @@ export function CharacterSheetHeader() {
           variant={isDirty ? 'primary' : 'secondary'}
           size="sm"
           loading={isSaving}
-          disabled={isLevelUpInProgress}
           onClick={() => void save()}
           className="shrink-0"
-          title={isLevelUpInProgress ? 'Complete the current level-up workflow before saving changes.' : undefined}
         >
           {isDirty ? 'Save Changes' : 'Saved'}
         </Button>

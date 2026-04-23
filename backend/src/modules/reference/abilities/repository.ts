@@ -82,7 +82,7 @@ export const referenceAbilityRepository = {
 
     // ── 2. ReferenceRevelation (oracle revelations — normalized table) ────────
     // Searched whenever a query is present; filtered by mystery/class if provided.
-    const revelations = (kind === 'talent' || !qLower)
+    const revelations = (kind === 'talent' || !qLower || !mysteryName)
       ? []
       : await prisma.referenceRevelation.findMany({
           where: {
@@ -110,9 +110,9 @@ export const referenceAbilityRepository = {
     // Fetches domains matching the character's domain (if set) or all domains,
     // then filters powers whose name contains the query string in JavaScript.
     const domainPowerResults: ReferenceAbilityResult[] = []
-    if (kind !== 'talent' && qLower) {
+    if (kind !== 'talent' && qLower && domainName) {
       const domains = await prisma.referenceDomain.findMany({
-        where: domainName ? { name: { contains: domainName } } : {},
+        where: { name: { contains: domainName } },
         select: { id: true, name: true, grantedPowers: true, sourceName: true, sourceUrl: true },
         // Domains in PF1e are ~100 records; fetching all is acceptable.
       })
@@ -144,9 +144,9 @@ export const referenceAbilityRepository = {
     // ── 5. Bloodline powers (embedded JSON in ReferenceBloodline) ─────────────
     // Same pattern as domains: fetch matching bloodlines, filter powers in JS.
     const bloodlinePowerResults: ReferenceAbilityResult[] = []
-    if (kind !== 'talent' && qLower) {
+    if (kind !== 'talent' && qLower && bloodlineName) {
       const bloodlines = await prisma.referenceBloodline.findMany({
-        where: bloodlineName ? { name: { contains: bloodlineName } } : {},
+        where: { name: { contains: bloodlineName } },
         select: { id: true, name: true, className: true, powers: true, sourceName: true, sourceUrl: true },
         // Bloodlines in PF1e are ~50 records; fetching all is acceptable.
       })

@@ -12,7 +12,7 @@ import { ALIGNMENTS, COMMON_CLASSES, COMMON_RACES } from '@/lib/constants'
 import { useCharacterStore }   from '@/app/store/characterStore'
 import { recomputeCharacter }  from '@/lib/formulas/character.formulas'
 import { createBlankCharacter } from '@/lib/utils/character.utils'
-import type { Alignment, ClassOptions, ReferenceRace, SizeCategory } from '@/types'
+import type { Alignment, AlternativeRacialTrait, ClassOptions, ReferenceRace, SizeCategory } from '@/types'
 import { useReferenceRaces }    from '../hooks/useReferenceRaces'
 import { useReferenceClasses }  from '../hooks/useReferenceClasses'
 import { useReferenceArchetypes } from '../hooks/useReferenceArchetypes'
@@ -38,6 +38,89 @@ function hasDomains(cls: string)      { return DOMAIN_CLASSES.includes(classKey(
 function hasMystery(cls: string)      { return MYSTERY_CLASSES.includes(classKey(cls)) }
 function hasArcaneBond(cls: string)   { return WIZARD_CLASSES.includes(classKey(cls)) }
 function domainCount(cls: string)     { return TWO_DOMAIN_CLASSES.includes(classKey(cls)) ? 2 : 1 }
+
+const SKILL_NAME_ALIASES: Record<string, string[]> = {
+  perception: ['perception'],
+  stealth: ['stealth'],
+  survival: ['survival'],
+  bluff: ['bluff'],
+  diplomacy: ['diplomacy'],
+  intimidate: ['intimidate'],
+  sense_motive: ['sense motive'],
+  acrobatics: ['acrobatics'],
+  climb: ['climb'],
+  swim: ['swim'],
+  knowledge_arcana: ['knowledge arcana'],
+  knowledge_dungeoneering: ['knowledge dungeoneering'],
+  knowledge_engineering: ['knowledge engineering'],
+  knowledge_geography: ['knowledge geography'],
+  knowledge_history: ['knowledge history'],
+  knowledge_local: ['knowledge local'],
+  knowledge_nature: ['knowledge nature'],
+  knowledge_nobility: ['knowledge nobility'],
+  knowledge_planes: ['knowledge planes'],
+  knowledge_religion: ['knowledge religion'],
+  spellcraft: ['spellcraft'],
+  appraise: ['appraise'],
+  disable_device: ['disable device'],
+  ride: ['ride'],
+  handle_animal: ['handle animal'],
+  heal: ['heal'],
+  linguistics: ['linguistics'],
+  profession: ['profession'],
+  craft: ['craft'],
+  perform: ['perform'],
+  use_magic_device: ['use magic device'],
+}
+
+function normalizeText(value: string) { return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() }
+
+function extractRaceSkillBonuses(race: ReferenceRace | null): Record<string, number> {
+  if (!race?.traits) return {}
+
+  const bonuses: Record<string, number> = {}
+
+  for (const trait of race.traits) {
+    const normalized = normalizeText([trait.name, trait.description].filter(Boolean).join(' '))
+    const match = normalized.match(/\+([0-9]+)\s+racial bonus(?:es)?\s+on\s+([^.]*)\s+checks?/i)
+    if (!match) continue
+
+    const bonus = Number.parseInt(match[1], 10)
+    const skillsPart = match[2]
+    if (!Number.isFinite(bonus)) continue
+
+    for (const [skillId, aliases] of Object.entries(SKILL_NAME_ALIASES)) {
+      if (aliases.some(alias => skillsPart.includes(alias))) {
+        bonuses[skillId] = Math.max(bonuses[skillId] ?? 0, bonus)
+      }
+    }
+  }
+
+  return bonuses
+}
+
+function extractAlternativeRacialTraits(race: ReferenceRace | null): AlternativeRacialTrait[] {
+  if (!race?.traits) return []
+
+  return race.traits.flatMap(trait => {
+    const name = trait.name?.trim()
+    const description = trait.description?.trim()
+    const normalized = normalizeText([name, description].filter(Boolean).join(' '))
+
+    if (!name || !description) return []
+    if (!normalized.includes('replaces')) return []
+
+    const replaceMatch = description.match(/replaces?\s+([^.;]+)/i)
+    const replaces = replaceMatch
+      ? replaceMatch[1]
+          .split(/,| and /i)
+          .map(part => part.replace(/[.]/g, '').trim())
+          .filter(Boolean)
+      : []
+
+    return [{ name, description, replaces }]
+  })
+}
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -428,13 +511,20 @@ export function CreateCharacterModal({ open, onClose }: CreateCharacterModalProp
 }
 
 function applyReferenceRaceDefaults(data: ReturnType<typeof recomputeCharacter>, race: ReferenceRace | null) {
-  if (!race?.baseSpeed) return data
+  const raceSkillBonuses = extractRaceSkillBonuses(race)
+  const alternativeRacialTraits = extractAlternativeRacialTraits(race)
+
   return {
     ...data,
     combat: {
       ...data.combat,
-      speed: race.baseSpeed,
+      speed: race?.baseSpeed ?? data.combat.speed,
     },
+    skills: data.skills.map(skill => ({
+      ...skill,
+      racialBonus: raceSkillBonuses[skill.id] ?? skill.racialBonus,
+    })),
+    alternativeRacialTraits,
   }
 }
 

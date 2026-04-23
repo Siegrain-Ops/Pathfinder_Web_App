@@ -10,6 +10,9 @@ type JsonClassFeature = {
 type JsonProgressionRow = {
   level?: number | null
   special?: unknown
+  fortSave?: number | null
+  refSave?: number | null
+  willSave?: number | null
 }
 
 export const referenceClassRepository = {
@@ -44,9 +47,11 @@ function normalizeReferenceClass(referenceClass: ReferenceClass): ReferenceClass
     referenceClass.classFeatures,
     referenceClass.progressionTable,
   )
+  const inferredGoodSaves = inferGoodSaves(referenceClass.progressionTable)
 
   return {
     ...referenceClass,
+    goodSaves: inferredGoodSaves ?? referenceClass.goodSaves,
     classFeatures: classFeatures.length > 0 ? classFeatures as never : referenceClass.classFeatures,
   }
 }
@@ -139,12 +144,31 @@ function normalizeFeatureName(value: string | null | undefined): string | null {
     .replace(/\s+/g, ' ')
     .trim()
 
-  return cleaned ? cleaned : null
+  if (!cleaned) return null
+  if (!/[a-z]/i.test(cleaned)) return null
+  if (/^[+-]?\d+(?:\.\d+)?$/.test(cleaned)) return null
+
+  return cleaned
 }
 
 function normalizeFeatureDescription(value: string | null | undefined): string | null {
   const cleaned = value?.replace(/\s+/g, ' ').trim()
   return cleaned ? cleaned : null
+}
+
+function inferGoodSaves(rawProgressionTable: ReferenceClass['progressionTable']): string | null {
+  if (!Array.isArray(rawProgressionTable)) return null
+
+  const rows = rawProgressionTable as JsonProgressionRow[]
+  const firstRow = rows.find(row => typeof row?.level === 'number' && row.level >= 1)
+  if (!firstRow) return null
+
+  const good: string[] = []
+  if (firstRow.fortSave === 2) good.push('fort')
+  if (firstRow.refSave === 2) good.push('ref')
+  if (firstRow.willSave === 2) good.push('will')
+
+  return good.length > 0 ? good.join(',') : null
 }
 
 function makeFeatureKey(level: number | null, name: string | null): string {
